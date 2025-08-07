@@ -99,12 +99,15 @@ Add to your Claude Desktop configuration:
   "mcp-gitlab": {
     "command": "uv",
     "args": ["run", "mcp-gitlab"],
+    "cwd": "/path/to/mcp-gitlab",
     "env": {
       "GITLAB_PRIVATE_TOKEN": "your-token-here"
     }
   }
 }
 ```
+
+Replace `/path/to/mcp-gitlab` with the full path to where you cloned the repository.
 
 ### Running with uvx
 
