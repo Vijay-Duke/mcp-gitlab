@@ -23,28 +23,27 @@ A Model Context Protocol (MCP) server that provides comprehensive GitLab API int
 
 ## Installation
 
-### Using uv (recommended)
+### Using uvx (recommended - no installation needed)
 
 ```bash
-# Install with uv
-uv pip install mcp-gitlab
-
-# Or install with test dependencies
-uv pip install -e ".[test]"
-```
-
-### Using pip
-
-```bash
-pip install mcp-gitlab
+# Run directly without installation
+uvx mcp-gitlab
 ```
 
 ### From source
 
 ```bash
-git clone https://github.com/your-username/mcp-gitlab.git
+# Clone the repository
+git clone https://github.com/Vijay-Duke/mcp-gitlab.git
 cd mcp-gitlab
-pip install -e .
+
+# Install dependencies and run with uv
+uv sync
+uv run mcp-gitlab
+
+# Or install in development mode with test dependencies
+uv sync --all-extras
+uv run pytest  # to run tests
 ```
 
 ## Configuration
@@ -77,7 +76,23 @@ export GITLAB_URL="https://gitlab.example.com"
 
 ### With Claude Desktop
 
-Add to your Claude Desktop configuration (`claude.json`):
+Add to your Claude Desktop configuration:
+
+#### Using uvx (recommended - no installation needed):
+
+```json
+{
+  "mcp-gitlab": {
+    "command": "uvx",
+    "args": ["mcp-gitlab"],
+    "env": {
+      "GITLAB_PRIVATE_TOKEN": "your-token-here"
+    }
+  }
+}
+```
+
+#### Using uv (if you've cloned the repository):
 
 ```json
 {
@@ -91,14 +106,26 @@ Add to your Claude Desktop configuration (`claude.json`):
 }
 ```
 
+### Running with uvx
+
+The easiest way to run the MCP GitLab server is using `uvx`:
+
+```bash
+# Set your GitLab token
+export GITLAB_PRIVATE_TOKEN="your-token-here"
+
+# Run the server directly with uvx
+uvx mcp-gitlab
+```
+
 ### Standalone Usage
 
 ```bash
-# Run the server
-python -m mcp_gitlab
-
-# Or with uv
+# If running from source (after uv sync)
 uv run mcp-gitlab
+
+# Or run the Python module directly
+uv run python -m mcp_gitlab
 ```
 
 ## Available Tools
