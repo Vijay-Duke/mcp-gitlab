@@ -459,6 +459,87 @@ class GitLabClient:
         events = [self._event_to_dict(e) for e in response]
         return {"events": events, "user": user, "pagination": pagination}
 
+    @retry_on_error()
+    def summarize_issue(self, project_id: str, issue_iid: int, max_length: int = 500) -> Dict[str, Any]:
+        """Generate an AI-friendly summary of an issue.
+        
+        This method retrieves issue details and comments, then formats them
+        into a concise summary suitable for LLM context.
+        
+        Args:
+            project_id: The project ID or path
+            issue_iid: The issue IID (internal ID)
+            max_length: Maximum length for description and comment summaries
+            
+        Returns:
+            Dictionary with summarized issue information
+        """
+        # Get issue details
+        issue = self.get_issue(project_id, issue_iid)
+        
+        # Get issue notes (comments)
+        project = self.gl.projects.get(project_id)
+        issue_obj = project.issues.get(issue_iid)
+        
+        # Get all notes with pagination
+        all_notes = []
+        kwargs = {
+            "get_all": False,
+            "per_page": SMALL_PAGE_SIZE,
+            "page": 1,
+            "order_by": "created_at",
+            "sort": "asc"
+        }
+        
+        # Get first page to check if there are any notes
+        response = issue_obj.notes.list(**kwargs)
+        all_notes.extend(response)
+        
+        # Get remaining pages if needed
+        total_pages = getattr(response, "total_pages", 1)
+        for page in range(2, min(total_pages + 1, 5)):  # Limit to 5 pages max
+            kwargs["page"] = page
+            response = issue_obj.notes.list(**kwargs)
+            all_notes.extend(response)
+        
+        # Convert notes to dict format
+        notes = [self._note_to_dict(n, max_length) for n in all_notes]
+        
+        # Filter out system notes
+        user_comments = [n for n in notes if not n.get("system", False)]
+        
+        # Truncate description if needed
+        description = issue.get("description", "")
+        truncated_description = False
+        if len(description) > max_length:
+            description = description[:max_length] + "... [truncated]"
+            truncated_description = True
+        
+        # Create summary
+        summary = {
+            "issue": {
+                "iid": issue["iid"],
+                "title": issue["title"],
+                "state": issue["state"],
+                "created_at": issue["created_at"],
+                "updated_at": issue["updated_at"],
+                "labels": issue.get("labels", []),
+                "author": issue.get("author"),
+                "web_url": issue["web_url"]
+            },
+            "description": description,
+            "comments_count": len(user_comments),
+            "comments": user_comments[:10],  # Limit to 10 most recent comments
+            "summary_info": {
+                "total_comments": len(all_notes),
+                "user_comments": len(user_comments),
+                "truncated_description": truncated_description,
+                "truncated_comments": len(user_comments) > 10
+            }
+        }
+        
+        return summary
+
 
 __all__ = ["GitLabClient", "GitLabConfig"]
 

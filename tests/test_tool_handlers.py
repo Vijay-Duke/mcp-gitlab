@@ -5,7 +5,7 @@ from mcp_gitlab.tool_handlers import (
     get_argument, require_argument, get_project_id_or_detect,
     require_project_id, handle_list_projects, handle_get_project,
     handle_get_current_project,
-    handle_list_issues, handle_get_issue,
+    handle_list_issues, handle_get_issue, handle_summarize_issue,
     handle_list_merge_requests, handle_get_merge_request,
     handle_update_merge_request, handle_close_merge_request,
     handle_merge_merge_request, handle_add_merge_request_comment,
@@ -212,6 +212,33 @@ class TestIssueHandlers:
         
         client.get_issue.assert_called_once_with("123", 42)
         assert result == {"iid": 42}
+    
+    def test_handle_summarize_issue(self):
+        """Test summarizing an issue"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.summarize_issue.return_value = {
+            "issue": {"iid": 42, "title": "Test Issue"},
+            "description": "Truncated description...",
+            "comments_count": 5,
+            "comments": [],
+            "summary_info": {
+                "total_comments": 10,
+                "user_comments": 5,
+                "truncated_description": True,
+                "truncated_comments": False
+            }
+        }
+        
+        result = handle_summarize_issue(client, {
+            "issue_iid": 42,
+            "max_length": 300
+        })
+        
+        client.summarize_issue.assert_called_once_with("123", 42, 300)
+        assert result["issue"]["iid"] == 42
+        assert result["comments_count"] == 5
+        assert result["summary_info"]["user_comments"] == 5
 
 
 class TestMergeRequestHandlers:
