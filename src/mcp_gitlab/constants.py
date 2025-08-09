@@ -204,3 +204,8 @@ TOOL_LIST_SNIPPETS = "gitlab_list_snippets"
 TOOL_GET_SNIPPET = "gitlab_get_snippet"
 TOOL_CREATE_SNIPPET = "gitlab_create_snippet"
 TOOL_UPDATE_SNIPPET = "gitlab_update_snippet"
+
+# Job and Artifact tools
+TOOL_LIST_PIPELINE_JOBS = "gitlab_list_pipeline_jobs"
+TOOL_DOWNLOAD_JOB_ARTIFACT = "gitlab_download_job_artifact"
+TOOL_LIST_PROJECT_JOBS = "gitlab_list_project_jobs"

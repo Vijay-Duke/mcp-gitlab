@@ -15,7 +15,8 @@ from mcp_gitlab.constants import (
     TOOL_LIST_REPOSITORY_TREE, TOOL_LIST_TAGS, TOOL_LIST_RELEASES,
     TOOL_LIST_PROJECT_MEMBERS, TOOL_LIST_PROJECT_HOOKS,
     TOOL_LIST_GROUPS, TOOL_GET_GROUP, TOOL_LIST_GROUP_PROJECTS,
-    TOOL_LIST_SNIPPETS, TOOL_GET_SNIPPET, TOOL_CREATE_SNIPPET, TOOL_UPDATE_SNIPPET
+    TOOL_LIST_SNIPPETS, TOOL_GET_SNIPPET, TOOL_CREATE_SNIPPET, TOOL_UPDATE_SNIPPET,
+    TOOL_LIST_PIPELINE_JOBS, TOOL_DOWNLOAD_JOB_ARTIFACT, TOOL_LIST_PROJECT_JOBS
 )
 
 logger = logging.getLogger(__name__)
@@ -483,6 +484,64 @@ def handle_batch_operations(client: GitLabClient, arguments: Optional[Dict[str, 
     return client.batch_operations(project_id, operations, stop_on_error)
 
 
+# Snippets handlers
+def handle_list_snippets(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle listing project snippets"""
+    project_id = require_project_id(client, arguments)
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.list_snippets(project_id, per_page=per_page, page=page)
+
+
+def handle_get_snippet(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting single snippet"""
+    project_id = require_project_id(client, arguments)
+    snippet_id = require_argument(arguments, "snippet_id")
+    
+    return client.get_snippet(project_id, snippet_id)
+
+
+def handle_create_snippet(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle creating a snippet"""
+    project_id = require_project_id(client, arguments)
+    title = require_argument(arguments, "title")
+    file_name = require_argument(arguments, "file_name")
+    content = require_argument(arguments, "content")
+    description = get_argument(arguments, "description")
+    visibility = get_argument(arguments, "visibility", "private")
+    
+    return client.create_snippet(
+        project_id=project_id,
+        title=title,
+        file_name=file_name,
+        content=content,
+        description=description,
+        visibility=visibility
+    )
+
+
+def handle_update_snippet(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle updating a snippet"""
+    project_id = require_project_id(client, arguments)
+    snippet_id = require_argument(arguments, "snippet_id")
+    title = get_argument(arguments, "title")
+    file_name = get_argument(arguments, "file_name")
+    content = get_argument(arguments, "content")
+    description = get_argument(arguments, "description")
+    visibility = get_argument(arguments, "visibility")
+    
+    return client.update_snippet(
+        project_id=project_id,
+        snippet_id=snippet_id,
+        title=title,
+        file_name=file_name,
+        content=content,
+        description=description,
+        visibility=visibility
+    )
+
+
 # Group handlers
 def handle_list_groups(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """Handle listing groups"""
@@ -517,6 +576,36 @@ def handle_list_group_projects(client: GitLabClient, arguments: Optional[Dict[st
         per_page=per_page, 
         page=page
     )
+
+
+# Job and Artifact handlers
+def handle_list_pipeline_jobs(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle listing jobs in a pipeline"""
+    project_id = require_project_id(client, arguments)
+    pipeline_id = require_argument(arguments, "pipeline_id")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.list_pipeline_jobs(project_id, pipeline_id, per_page=per_page, page=page)
+
+
+def handle_download_job_artifact(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle downloading job artifacts"""
+    project_id = require_project_id(client, arguments)
+    job_id = require_argument(arguments, "job_id")
+    artifact_path = get_argument(arguments, "artifact_path")
+    
+    return client.download_job_artifact(project_id, job_id, artifact_path)
+
+
+def handle_list_project_jobs(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle listing jobs for a project"""
+    project_id = require_project_id(client, arguments)
+    scope = get_argument(arguments, "scope")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.list_project_jobs(project_id, scope=scope, per_page=per_page, page=page)
 
 
 # Tool handler mapping
@@ -589,4 +678,15 @@ TOOL_HANDLERS = {
     TOOL_LIST_GROUPS: handle_list_groups,
     TOOL_GET_GROUP: handle_get_group,
     TOOL_LIST_GROUP_PROJECTS: handle_list_group_projects,
+    
+    # Snippets handlers
+    TOOL_LIST_SNIPPETS: handle_list_snippets,
+    TOOL_GET_SNIPPET: handle_get_snippet,
+    TOOL_CREATE_SNIPPET: handle_create_snippet,
+    TOOL_UPDATE_SNIPPET: handle_update_snippet,
+    
+    # Job and Artifact handlers
+    TOOL_LIST_PIPELINE_JOBS: handle_list_pipeline_jobs,
+    TOOL_DOWNLOAD_JOB_ARTIFACT: handle_download_job_artifact,
+    TOOL_LIST_PROJECT_JOBS: handle_list_project_jobs,
 }

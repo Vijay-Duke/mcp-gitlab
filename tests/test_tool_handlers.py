@@ -13,6 +13,7 @@ from mcp_gitlab.tool_handlers import (
     handle_get_merge_request_approvals, handle_get_merge_request_discussions,
     handle_resolve_discussion, handle_get_merge_request_changes,
     handle_rebase_merge_request, handle_search_projects,
+    handle_list_pipeline_jobs, handle_download_job_artifact, handle_list_project_jobs,
     TOOL_HANDLERS
 )
 from mcp_gitlab.constants import ERROR_NO_PROJECT, DEFAULT_PAGE_SIZE
@@ -406,6 +407,152 @@ class TestMergeRequestHandlers:
         assert result == {"rebase_in_progress": False}
 
 
+class TestJobArtifactHandlers:
+    """Test job and artifact handlers"""
+    
+    def test_handle_list_pipeline_jobs(self):
+        """Test listing jobs in a pipeline"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.list_pipeline_jobs.return_value = {
+            "jobs": [{"id": 1, "name": "test_job", "status": "success"}],
+            "pagination": {"page": 1, "per_page": 50},
+            "project_id": "123",
+            "pipeline_id": 456
+        }
+        
+        result = handle_list_pipeline_jobs(client, {
+            "pipeline_id": 456,
+            "per_page": 25,
+            "page": 2
+        })
+        
+        client.list_pipeline_jobs.assert_called_once_with("123", 456, per_page=25, page=2)
+        assert result["jobs"][0]["name"] == "test_job"
+        assert result["pipeline_id"] == 456
+    
+    def test_handle_list_pipeline_jobs_defaults(self):
+        """Test listing pipeline jobs with defaults"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.list_pipeline_jobs.return_value = {
+            "jobs": [],
+            "pagination": {"page": 1, "per_page": DEFAULT_PAGE_SIZE},
+            "project_id": "123",
+            "pipeline_id": 456
+        }
+        
+        handle_list_pipeline_jobs(client, {"pipeline_id": 456})
+        
+        client.list_pipeline_jobs.assert_called_once_with("123", 456, per_page=DEFAULT_PAGE_SIZE, page=1)
+    
+    def test_handle_list_pipeline_jobs_missing_pipeline_id(self):
+        """Test listing pipeline jobs without pipeline_id"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        
+        with pytest.raises(ValueError, match="pipeline_id is required"):
+            handle_list_pipeline_jobs(client, {})
+    
+    def test_handle_download_job_artifact(self):
+        """Test downloading job artifacts"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.download_job_artifact.return_value = {
+            "job_id": 789,
+            "job_name": "build",
+            "project_id": "123",
+            "artifacts": [{"filename": "build.zip", "size": 1024}],
+            "artifacts_expire_at": "2024-12-31T23:59:59Z",
+            "download_note": "Artifact content not downloaded for security reasons. Use GitLab web interface or CLI for actual downloads."
+        }
+        
+        result = handle_download_job_artifact(client, {
+            "job_id": 789,
+            "artifact_path": "build.zip"
+        })
+        
+        client.download_job_artifact.assert_called_once_with("123", 789, "build.zip")
+        assert result["job_id"] == 789
+        assert result["job_name"] == "build"
+        assert "download_note" in result
+    
+    def test_handle_download_job_artifact_no_path(self):
+        """Test downloading job artifacts without specific path"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.download_job_artifact.return_value = {
+            "job_id": 789,
+            "artifacts": [],
+            "download_note": "Artifact content not downloaded for security reasons. Use GitLab web interface or CLI for actual downloads."
+        }
+        
+        result = handle_download_job_artifact(client, {"job_id": 789})
+        
+        client.download_job_artifact.assert_called_once_with("123", 789, None)
+        assert result["job_id"] == 789
+    
+    def test_handle_download_job_artifact_missing_job_id(self):
+        """Test downloading job artifacts without job_id"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        
+        with pytest.raises(ValueError, match="job_id is required"):
+            handle_download_job_artifact(client, {})
+    
+    def test_handle_list_project_jobs(self):
+        """Test listing jobs for a project"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.list_project_jobs.return_value = {
+            "jobs": [{"id": 1, "name": "test", "status": "failed"}],
+            "pagination": {"page": 1, "per_page": 20},
+            "project_id": "123",
+            "scope": "failed"
+        }
+        
+        result = handle_list_project_jobs(client, {
+            "scope": "failed",
+            "per_page": 20,
+            "page": 1
+        })
+        
+        client.list_project_jobs.assert_called_once_with("123", scope="failed", per_page=20, page=1)
+        assert result["jobs"][0]["status"] == "failed"
+        assert result["scope"] == "failed"
+    
+    def test_handle_list_project_jobs_defaults(self):
+        """Test listing project jobs with defaults"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.list_project_jobs.return_value = {
+            "jobs": [],
+            "pagination": {"page": 1, "per_page": DEFAULT_PAGE_SIZE},
+            "project_id": "123",
+            "scope": None
+        }
+        
+        handle_list_project_jobs(client, {})
+        
+        client.list_project_jobs.assert_called_once_with("123", scope=None, per_page=DEFAULT_PAGE_SIZE, page=1)
+    
+    def test_handle_list_project_jobs_with_scope(self):
+        """Test listing project jobs with specific scope"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.list_project_jobs.return_value = {
+            "jobs": [{"id": 1, "status": "running"}],
+            "pagination": {"page": 1, "per_page": DEFAULT_PAGE_SIZE},
+            "project_id": "123",
+            "scope": "running"
+        }
+        
+        result = handle_list_project_jobs(client, {"scope": "running"})
+        
+        client.list_project_jobs.assert_called_once_with("123", scope="running", per_page=DEFAULT_PAGE_SIZE, page=1)
+        assert result["scope"] == "running"
+
+
 class TestToolHandlerMapping:
     """Test tool handler mapping"""
     
@@ -441,6 +588,10 @@ class TestToolHandlerMapping:
             "gitlab_resolve_discussion",
             "gitlab_get_merge_request_changes",
             "gitlab_rebase_merge_request",
+            # Job and artifact tools
+            "gitlab_list_pipeline_jobs",
+            "gitlab_download_job_artifact", 
+            "gitlab_list_project_jobs",
         ]
         
         for tool in expected_tools:
