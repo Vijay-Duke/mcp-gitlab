@@ -249,11 +249,14 @@ class GitDetector:
     
     @classmethod
     def is_gitlab_url(cls, url: str, gitlab_host: Optional[str] = None) -> bool:
-        """Check if a URL is a GitLab URL
-        
+        """Check if a URL is a GitLab URL.
+
         Args:
-            url: The URL to check
-            gitlab_host: If provided, check if URL matches this specific GitLab host
+            url: The URL to check.
+            gitlab_host: If provided, the URL must match this specific GitLab
+                host. When not provided, the hostname must either be
+                ``gitlab.com``, a subdomain of ``gitlab.com``, or include a
+                distinct ``gitlab`` label (e.g., ``gitlab.example.com``).
         """
         parsed = cls.parse_gitlab_url(url)
         if not parsed:
@@ -262,7 +265,30 @@ class GitDetector:
         if gitlab_host:
             # Normalize hosts for comparison
             url_host = parsed["host"].lower().replace("www.", "")
-            check_host = gitlab_host.lower().replace("www.", "").replace("https://", "").replace("http://", "").split("/")[0]
+            check_host = (
+                gitlab_host.lower()
+                .replace("www.", "")
+                .replace("https://", "")
+                .replace("http://", "")
+                .split("/")[0]
+            )
             return url_host == check_host
-        
-        return True
+
+        # Default behavior: ensure the URL points to a GitLab host using
+        # common hostname patterns. We explicitly allow:
+        #   - gitlab.com and any subdomain of gitlab.com
+        #   - self-hosted instances whose hostname contains a distinct
+        #     ``gitlab`` label (e.g., ``gitlab.example.com`` or
+        #     ``sub.gitlab.example.org``)
+        host = parsed["host"].lower()
+
+        # Official GitLab SaaS domain
+        if host == "gitlab.com" or host.endswith(".gitlab.com"):
+            return True
+
+        # Self-hosted GitLab instances: look for a '.gitlab.' label or a
+        # hostname starting with 'gitlab.'
+        if host.startswith("gitlab.") or ".gitlab." in host:
+            return True
+
+        return False
