@@ -81,12 +81,9 @@ class TestToolRegistration:
         mapped_handlers = set(TOOL_HANDLERS.values())
         mapped_handler_names = {handler.__name__ for handler in mapped_handlers}
         
-        # Exclude helper functions that aren't tool handlers
-        helper_functions = {
-            'handle_list_projects',  # This is actually a tool handler
-        }
+        # No helper functions to exclude; all handle_* functions are checked
         
-        unmapped_handlers = handler_functions - mapped_handler_names - helper_functions
+        unmapped_handlers = handler_functions - mapped_handler_names
         
         # Actually, let's just ensure we have the right count
         assert len(mapped_handlers) > 0, "No handlers are mapped"
@@ -107,12 +104,12 @@ class TestToolRegistration:
     
     def test_no_duplicate_tool_names(self, server_tools, handler_tools):
         """Test that there are no duplicate tool names"""
-        # This is implicitly tested by using sets, but let's be explicit
-        all_tools = list(server_tools) + list(handler_tools)
-        unique_tools = set(all_tools)
-        
-        assert len(all_tools) == len(unique_tools) * 2 or len(server_tools) == len(handler_tools), (
-            "Duplicate tool names detected"
+        # Since server_tools and handler_tools should have the same tools,
+        # we check that they are equal sets (no duplicates within each)
+        assert server_tools == handler_tools, (
+            f"Server tools and handler tools don't match.\n"
+            f"Only in server: {sorted(server_tools - handler_tools)}\n"
+            f"Only in handlers: {sorted(handler_tools - server_tools)}"
         )
     
     def test_requested_tools_are_implemented(self, server_tools, handler_tools):
