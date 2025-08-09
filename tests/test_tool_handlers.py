@@ -6,7 +6,12 @@ from mcp_gitlab.tool_handlers import (
     require_project_id, handle_list_projects, handle_get_project,
     handle_detect_project, handle_list_issues, handle_get_issue,
     handle_list_merge_requests, handle_get_merge_request,
-    handle_get_merge_request_notes, TOOL_HANDLERS
+    handle_update_merge_request, handle_close_merge_request,
+    handle_merge_merge_request, handle_add_merge_request_comment,
+    handle_get_merge_request_notes, handle_approve_merge_request,
+    handle_get_merge_request_approvals, handle_get_merge_request_discussions,
+    handle_resolve_discussion, handle_get_merge_request_changes,
+    handle_rebase_merge_request, TOOL_HANDLERS
 )
 from mcp_gitlab.constants import ERROR_NO_PROJECT, DEFAULT_PAGE_SIZE
 
@@ -213,6 +218,136 @@ class TestMergeRequestHandlers:
         )
         assert result == {"data": [{"id": 1}]}
 
+    def test_handle_get_merge_request(self):
+        """Test retrieving a single merge request"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.get_merge_request.return_value = {"iid": 5}
+
+        result = handle_get_merge_request(client, {"mr_iid": 5})
+
+        client.get_merge_request.assert_called_once_with("123", 5)
+        assert result == {"iid": 5}
+
+    def test_handle_update_merge_request(self):
+        """Test updating merge request with optional fields"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.update_merge_request.return_value = {"iid": 5, "title": "New"}
+
+        args = {"mr_iid": 5, "title": "New", "labels": "bug"}
+        result = handle_update_merge_request(client, args)
+
+        client.update_merge_request.assert_called_once_with("123", 5, title="New", labels="bug")
+        assert result == {"iid": 5, "title": "New"}
+
+    def test_handle_close_merge_request(self):
+        """Test closing a merge request"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.close_merge_request.return_value = {"iid": 5, "state": "closed"}
+
+        result = handle_close_merge_request(client, {"mr_iid": 5})
+
+        client.close_merge_request.assert_called_once_with("123", 5)
+        assert result == {"iid": 5, "state": "closed"}
+
+    def test_handle_merge_merge_request(self):
+        """Test merging a merge request"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.merge_merge_request.return_value = {"iid": 5, "state": "merged"}
+
+        args = {
+            "mr_iid": 5,
+            "merge_when_pipeline_succeeds": True,
+            "squash": True,
+            "merge_commit_message": "msg"
+        }
+        result = handle_merge_merge_request(client, args)
+
+        client.merge_merge_request.assert_called_once_with(
+            "123", 5, True, None, "msg", None, True
+        )
+        assert result == {"iid": 5, "state": "merged"}
+
+    def test_handle_add_merge_request_comment(self):
+        """Test adding comment to merge request"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.add_merge_request_comment.return_value = {"id": 1}
+
+        result = handle_add_merge_request_comment(client, {"mr_iid": 5, "body": "hi"})
+
+        client.add_merge_request_comment.assert_called_once_with("123", 5, "hi")
+        assert result == {"id": 1}
+
+    def test_handle_approve_merge_request(self):
+        """Test approving a merge request"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.approve_merge_request.return_value = {"approved": True}
+
+        result = handle_approve_merge_request(client, {"mr_iid": 5})
+
+        client.approve_merge_request.assert_called_once_with("123", 5)
+        assert result == {"approved": True}
+
+    def test_handle_get_merge_request_approvals(self):
+        """Test retrieving approvals for merge request"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.get_merge_request_approvals.return_value = {"approved": False}
+
+        result = handle_get_merge_request_approvals(client, {"mr_iid": 5})
+
+        client.get_merge_request_approvals.assert_called_once_with("123", 5)
+        assert result == {"approved": False}
+
+    def test_handle_get_merge_request_discussions(self):
+        """Test getting discussions for a merge request"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.get_merge_request_discussions.return_value = {"discussions": []}
+
+        result = handle_get_merge_request_discussions(client, {"mr_iid": 5, "per_page": 5, "page": 2})
+
+        client.get_merge_request_discussions.assert_called_once_with("123", 5, 5, 2)
+        assert result == {"discussions": []}
+
+    def test_handle_resolve_discussion(self):
+        """Test resolving a discussion thread"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.resolve_discussion.return_value = {"discussion_id": "abc"}
+
+        result = handle_resolve_discussion(client, {"mr_iid": 5, "discussion_id": "abc"})
+
+        client.resolve_discussion.assert_called_once_with("123", 5, "abc")
+        assert result == {"discussion_id": "abc"}
+
+    def test_handle_get_merge_request_changes(self):
+        """Test retrieving merge request changes"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.get_merge_request_changes.return_value = {"changes": []}
+
+        result = handle_get_merge_request_changes(client, {"mr_iid": 5})
+
+        client.get_merge_request_changes.assert_called_once_with("123", 5)
+        assert result == {"changes": []}
+
+    def test_handle_rebase_merge_request(self):
+        """Test rebasing a merge request"""
+        client = Mock()
+        client.get_project_from_git.return_value = {"id": "123"}
+        client.rebase_merge_request.return_value = {"rebase_in_progress": False}
+
+        result = handle_rebase_merge_request(client, {"mr_iid": 5})
+
+        client.rebase_merge_request.assert_called_once_with("123", 5)
+        assert result == {"rebase_in_progress": False}
+
 
 class TestToolHandlerMapping:
     """Test tool handler mapping"""
@@ -237,7 +372,18 @@ class TestToolHandlerMapping:
             "gitlab_search_in_project",
             "gitlab_list_branches",
             "gitlab_list_pipelines",
-            "gitlab_get_user_events"
+            "gitlab_get_user_events",
+            # Newly implemented merge request operations
+            "gitlab_update_merge_request",
+            "gitlab_close_merge_request",
+            "gitlab_merge_merge_request",
+            "gitlab_add_merge_request_comment",
+            "gitlab_approve_merge_request",
+            "gitlab_get_merge_request_approvals",
+            "gitlab_get_merge_request_discussions",
+            "gitlab_resolve_discussion",
+            "gitlab_get_merge_request_changes",
+            "gitlab_rebase_merge_request",
         ]
         
         for tool in expected_tools:
