@@ -85,8 +85,10 @@ class TestToolRegistration:
         
         unmapped_handlers = handler_functions - mapped_handler_names
         
-        # Actually, let's just ensure we have the right count
-        assert len(mapped_handlers) > 0, "No handlers are mapped"
+        assert not unmapped_handlers, (
+            f"The following handler functions are not mapped in TOOL_HANDLERS: "
+            f"{sorted(unmapped_handlers)}"
+        )
     
     def test_tool_naming_conventions(self, server_tools):
         """Test that all tools follow consistent naming conventions"""
