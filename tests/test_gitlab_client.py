@@ -676,3 +676,105 @@ class TestGitLabClient:
         assert len(result["events"]) == 2
         assert result["events"][0]["action_name"] == "pushed"
         assert result["user"]["username"] == "testuser"
+    
+    @pytest.mark.unit
+    def test_get_current_user(self, client):
+        """Test getting current authenticated user"""
+        # Mock user object with attributes
+        mock_user = Mock()
+        mock_user.id = 123
+        mock_user.username = "johndoe"
+        mock_user.name = "John Doe"
+        mock_user.email = "john@example.com"
+        mock_user.state = "active"
+        mock_user.avatar_url = "https://gitlab.com/avatar.jpg"
+        mock_user.web_url = "https://gitlab.com/johndoe"
+        mock_user.created_at = "2020-01-01T00:00:00Z"
+        mock_user.bio = "Software Developer"
+        mock_user.organization = "ACME Corp"
+        mock_user.job_title = "Senior Developer"
+        mock_user.public_email = "john@example.com"
+        mock_user.is_admin = False
+        mock_user.can_create_group = True
+        mock_user.can_create_project = True
+        mock_user.two_factor_enabled = True
+        mock_user.external = False
+        
+        client.gl.user = mock_user
+        
+        result = client.get_current_user()
+        
+        assert result["id"] == 123
+        assert result["username"] == "johndoe"
+        assert result["name"] == "John Doe"
+        assert result["email"] == "john@example.com"
+        assert result["is_admin"] is False
+        assert result["two_factor_enabled"] is True
+    
+    @pytest.mark.unit
+    def test_get_user_by_id(self, client):
+        """Test getting user by ID"""
+        mock_user = Mock()
+        mock_user.id = 456
+        mock_user.username = "janedoe"
+        mock_user.name = "Jane Doe"
+        mock_user.state = "active"
+        mock_user.avatar_url = "https://gitlab.com/avatar2.jpg"
+        mock_user.web_url = "https://gitlab.com/janedoe"
+        mock_user.created_at = "2021-01-01T00:00:00Z"
+        mock_user.bio = "Product Manager"
+        mock_user.organization = "Tech Inc"
+        mock_user.job_title = "PM"
+        mock_user.public_email = "jane@example.com"
+        mock_user.external = False
+        
+        client.gl.users.get.return_value = mock_user
+        
+        result = client.get_user(user_id=456)
+        
+        assert result["id"] == 456
+        assert result["username"] == "janedoe"
+        assert result["name"] == "Jane Doe"
+        client.gl.users.get.assert_called_once_with(456)
+    
+    @pytest.mark.unit
+    def test_get_user_by_username(self, client):
+        """Test getting user by username"""
+        mock_user = Mock()
+        mock_user.id = 789
+        mock_user.username = "testuser"
+        mock_user.name = "Test User"
+        mock_user.state = "active"
+        mock_user.avatar_url = None
+        mock_user.web_url = "https://gitlab.com/testuser"
+        
+        # Mock get_user_by_username
+        client.get_user_by_username = Mock(return_value={
+            "id": 789,
+            "username": "testuser",
+            "name": "Test User",
+            "state": "active",
+            "avatar_url": None,
+            "web_url": "https://gitlab.com/testuser"
+        })
+        
+        result = client.get_user(username="testuser")
+        
+        assert result["id"] == 789
+        assert result["username"] == "testuser"
+        client.get_user_by_username.assert_called_once_with("testuser")
+    
+    @pytest.mark.unit
+    def test_get_user_not_found(self, client):
+        """Test getting user returns None when not found"""
+        client.gl.users.get.side_effect = gitlab.exceptions.GitlabGetError()
+        
+        result = client.get_user(user_id=999)
+        
+        assert result is None
+    
+    @pytest.mark.unit
+    def test_get_user_no_params(self, client):
+        """Test get_user raises error when no params provided"""
+        with pytest.raises(ValueError, match="Either user_id or username must be provided"):
+            client.get_user()

@@ -20,6 +20,61 @@ from mcp_gitlab.constants import (
 )
 
 # ============================================================================
+# AUTHENTICATION & USER TOOL DESCRIPTIONS
+# ============================================================================
+
+DESC_GET_CURRENT_USER = """Get the currently authenticated user's profile
+Returns comprehensive information about the authenticated user including:
+- Basic info: ID, username, name, email
+- Profile details: bio, organization, job title
+- Account status: state, creation date, admin status
+- Permissions: can_create_group, can_create_project
+- Security: two_factor_enabled, external status
+
+Use cases:
+- Verify authentication is working
+- Get user context for automation scripts
+- Check user permissions and capabilities
+- Display user info in applications
+
+Example response: {'id': 123, 'username': 'johndoe', 'name': 'John Doe', ...}"""
+
+DESC_GET_USER = """Get details for a specific user by ID or username
+Retrieves public profile information for any GitLab user.
+
+Parameters:
+- user_id: Numeric user ID (e.g., 12345)
+- username: Username string (e.g., 'johndoe')
+
+Use either user_id OR username, not both.
+
+Returns user information including:
+- Basic info: ID, username, name
+- Profile: avatar_url, web_url, bio
+- Organization details: company, job title
+- Account status and creation date
+
+Use cases:
+- Look up user for @mentions
+- Get user info for permissions/assignments
+- Find user details from commits/issues
+- User profile display
+
+Example: user_id=123 OR username='johndoe'"""
+
+DESC_USER_ID = """User ID (numeric)
+Type: integer
+Format: Numeric user ID
+Example: 12345
+How to find: From user profile URL or API responses"""
+
+DESC_USERNAME = """Username
+Type: string
+Format: GitLab username (without @)
+Example: 'johndoe' (not '@johndoe')
+Note: Case-sensitive, exact match required"""
+
+# ============================================================================
 # COMMON PARAMETER DESCRIPTIONS
 # ============================================================================
 
@@ -48,6 +103,15 @@ Examples:
   - 'gitlab-org/gitlab' (namespace/project path)
   - 'my-group/my-subgroup/my-project' (nested groups)
 Note: If in a git repo with GitLab remote, this can be omitted"""
+
+DESC_GROUP_ID = """Group identifier
+Type: integer OR string
+Format: numeric ID or 'group/subgroup' path
+Required: Yes
+Examples:
+  - 456 (numeric ID)
+  - 'my-group' (group path)
+  - 'parent-group/sub-group' (nested group path)"""
 
 DESC_PROJECT_ID_REQUIRED = """Project identifier (required)
 Type: integer OR string
@@ -183,6 +247,30 @@ Options:
   - true: Only projects where you are the owner
   - false: All accessible projects
 Use case: Quickly find your personal projects"""
+
+DESC_OWNED_GROUPS = """Filter for owned groups only
+Type: boolean
+Default: false
+Options:
+  - true: Only groups where you are the owner
+  - false: All accessible groups
+Use case: Managing your own groups"""
+
+DESC_WITH_PROJECTS = """Include projects in group response
+Type: boolean
+Default: false
+Options:
+  - true: Include first page of projects
+  - false: Only group metadata
+Note: Adds project list to response (limited to first 20)"""
+
+DESC_INCLUDE_SUBGROUPS = """Include projects from subgroups
+Type: boolean
+Default: false
+Options:
+  - true: Include all descendant group projects
+  - false: Only direct group projects
+Use case: Navigating hierarchical group structures"""
 
 # Path Parameters
 DESC_GIT_PATH = """Local git repository path
@@ -864,6 +952,68 @@ How it works:
 Related tools:
 - gitlab_get_project: When you know the project ID
 - gitlab_list_projects: Browse available projects"""
+
+# Group Management Tools
+DESC_LIST_GROUPS = """List accessible GitLab groups
+Returns: Array of groups with ID, name, path, description
+Use when: Browsing groups, finding group IDs, navigating group hierarchy
+Pagination: Yes (default 50 per page)
+Filtering: By ownership, name search
+
+Example response:
+[{
+  "id": 123,
+  "name": "My Group",
+  "path": "my-group",
+  "full_path": "parent-group/my-group",
+  "description": "Group for team projects",
+  "web_url": "https://gitlab.com/groups/my-group",
+  "visibility": "private"
+}]
+
+Related tools:
+- gitlab_get_group: Get full group details
+- gitlab_list_group_projects: List projects in a group"""
+
+DESC_GET_GROUP = """Get detailed group information
+Returns: Complete group metadata, settings, statistics
+Use when: Need full group details, checking configuration, counting projects
+Optional: Include first page of projects with with_projects=true
+
+Example response:
+{
+  "id": 123,
+  "name": "My Group",
+  "full_path": "parent-group/my-group",
+  "description": "Group for team projects",
+  "visibility": "private",
+  "projects_count": 15,
+  "created_at": "2023-01-01T00:00:00Z",
+  "web_url": "https://gitlab.com/groups/my-group"
+}
+
+Related tools:
+- gitlab_list_groups: Browse available groups
+- gitlab_list_group_projects: List all projects in group"""
+
+DESC_LIST_GROUP_PROJECTS = """List projects within a group
+Returns: Array of projects belonging to the specified group
+Use when: Browsing group projects, finding projects in group hierarchy
+Pagination: Yes (default 50 per page)
+Options: Include subgroup projects with include_subgroups=true
+
+Example response:
+[{
+  "id": 456,
+  "name": "project-one",
+  "path_with_namespace": "my-group/project-one",
+  "description": "First project in group",
+  "web_url": "https://gitlab.com/my-group/project-one"
+}]
+
+Related tools:
+- gitlab_get_group: Get group details
+- gitlab_get_project: Get full project details"""
 
 # Issue Management Tools
 DESC_LIST_ISSUES = """List project issues

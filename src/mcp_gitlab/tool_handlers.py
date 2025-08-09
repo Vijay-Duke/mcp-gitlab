@@ -14,6 +14,7 @@ from mcp_gitlab.constants import (
     TOOL_LIST_USER_EVENTS, TOOL_LIST_COMMITS,
     TOOL_LIST_REPOSITORY_TREE, TOOL_LIST_TAGS, TOOL_LIST_RELEASES,
     TOOL_LIST_PROJECT_MEMBERS, TOOL_LIST_PROJECT_HOOKS,
+    TOOL_GET_CURRENT_USER, TOOL_GET_USER,
     TOOL_LIST_GROUPS, TOOL_GET_GROUP, TOOL_LIST_GROUP_PROJECTS,
     TOOL_LIST_SNIPPETS, TOOL_GET_SNIPPET, TOOL_CREATE_SNIPPET, TOOL_UPDATE_SNIPPET,
     TOOL_LIST_PIPELINE_JOBS, TOOL_DOWNLOAD_JOB_ARTIFACT, TOOL_LIST_PROJECT_JOBS
@@ -223,6 +224,27 @@ def handle_list_pipelines(client: GitLabClient, arguments: Optional[Dict[str, An
     ref = get_argument(arguments, "ref")
     
     return client.get_pipelines(project_id, ref)
+
+
+# Authentication & User Handlers
+def handle_get_current_user(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting the current authenticated user"""
+    return client.get_current_user()
+
+
+def handle_get_user(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user details by ID or username"""
+    user_id = get_argument(arguments, "user_id")
+    username = get_argument(arguments, "username")
+    
+    if not user_id and not username:
+        raise ValueError("Either user_id or username must be provided")
+    
+    result = client.get_user(user_id=user_id, username=username)
+    if result is None:
+        raise ValueError(f"User not found: {user_id or username}")
+    
+    return result
 
 
 # User Event Handlers
@@ -607,12 +629,13 @@ def handle_list_project_jobs(client: GitLabClient, arguments: Optional[Dict[str,
     
     return client.list_project_jobs(project_id, scope=scope, per_page=per_page, page=page)
 
-
 # Tool handler mapping
 TOOL_HANDLERS = {
     TOOL_LIST_PROJECTS: handle_list_projects,
     TOOL_GET_PROJECT: handle_get_project,
     TOOL_GET_CURRENT_PROJECT: handle_get_current_project,
+    TOOL_GET_CURRENT_USER: handle_get_current_user,
+    TOOL_GET_USER: handle_get_user,
     TOOL_LIST_ISSUES: handle_list_issues,
     "gitlab_get_issue": handle_get_issue,
     TOOL_LIST_MRS: handle_list_merge_requests,

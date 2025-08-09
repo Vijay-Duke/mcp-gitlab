@@ -184,6 +184,8 @@ TOOL_LIST_PIPELINES = "gitlab_list_pipelines"
 TOOL_LIST_BRANCHES = "gitlab_list_branches"
 TOOL_GET_CURRENT_PROJECT = "gitlab_get_current_project"
 TOOL_GET_MR_NOTES = "gitlab_get_merge_request_notes"
+TOOL_GET_CURRENT_USER = "gitlab_get_current_user"
+TOOL_GET_USER = "gitlab_get_user"
 
 # New renamed tools
 TOOL_LIST_COMMITS = "gitlab_list_commits"
