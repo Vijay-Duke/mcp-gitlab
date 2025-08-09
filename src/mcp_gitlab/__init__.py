@@ -7,8 +7,13 @@ robust for unit tests we try to import the server lazily and fall back to
 lightweight placeholders when the import fails.
 """
 
-from .gitlab_client import GitLabClient, GitLabConfig
+try:  # pragma: no cover - defensive import
+    from .gitlab_client import GitLabClient, GitLabConfig
+except Exception:
+    GitLabClient = None
+    GitLabConfig = None
 
+__version__ = "0.1.0"
 __all__ = ["GitLabClient", "GitLabConfig"]
 
 try:  # pragma: no cover - exercised implicitly during import
@@ -19,5 +24,3 @@ except Exception:  # pylint: disable=broad-except
 
     def main(*args, **kwargs):  # pragma: no cover - placeholder function
         raise ImportError("MCP server dependencies are not installed")
-
-__version__ = "0.1.0"

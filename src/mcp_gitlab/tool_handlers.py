@@ -70,11 +70,21 @@ def handle_get_project(client: GitLabClient, arguments: Optional[Dict[str, Any]]
     return client.get_project(project_id)
 
 
+def handle_get_current_project(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting current project using git detection"""
+    path = get_argument(arguments, "path", ".")
+    result = client.get_current_project(path)
+
+    if not result:
+        return {"error": ERROR_NO_PROJECT}
+    return result
+
+
 def handle_detect_project(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """Handle detecting project from git"""
     path = get_argument(arguments, "path", ".")
     result = client.get_project_from_git(path)
-    
+
     if not result:
         return {"error": ERROR_NO_PROJECT}
     return result
@@ -484,7 +494,7 @@ TOOL_HANDLERS = {
     TOOL_LIST_PROJECTS: handle_list_projects,
     TOOL_GET_PROJECT: handle_get_project,
     TOOL_DETECT_PROJECT: handle_detect_project,
-    TOOL_GET_CURRENT_PROJECT: handle_detect_project,  # Same handler, new name
+    TOOL_GET_CURRENT_PROJECT: handle_get_current_project,
     TOOL_LIST_ISSUES: handle_list_issues,
     "gitlab_get_issue": handle_get_issue,
     TOOL_LIST_MRS: handle_list_merge_requests,
