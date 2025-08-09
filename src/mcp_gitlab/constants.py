@@ -184,6 +184,8 @@ TOOL_LIST_PIPELINES = "gitlab_list_pipelines"
 TOOL_LIST_BRANCHES = "gitlab_list_branches"
 TOOL_GET_CURRENT_PROJECT = "gitlab_get_current_project"
 TOOL_GET_MR_NOTES = "gitlab_get_merge_request_notes"
+TOOL_GET_CURRENT_USER = "gitlab_get_current_user"
+TOOL_GET_USER = "gitlab_get_user"
 
 # New renamed tools
 TOOL_LIST_COMMITS = "gitlab_list_commits"
@@ -193,3 +195,8 @@ TOOL_LIST_USER_EVENTS = "gitlab_list_user_events"
 TOOL_LIST_PROJECT_MEMBERS = "gitlab_list_project_members"
 TOOL_LIST_PROJECT_HOOKS = "gitlab_list_project_hooks"
 TOOL_LIST_RELEASES = "gitlab_list_releases"
+
+# Group tools
+TOOL_LIST_GROUPS = "gitlab_list_groups"
+TOOL_GET_GROUP = "gitlab_get_group"
+TOOL_LIST_GROUP_PROJECTS = "gitlab_list_group_projects"

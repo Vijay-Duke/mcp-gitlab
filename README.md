@@ -5,6 +5,7 @@ A Model Context Protocol (MCP) server that provides comprehensive GitLab API int
 ## Features
 
 ### Core Features
+- 🔐 **Authentication & Users** - Get current user info and lookup user profiles
 - 🔍 **Project Management** - List, search, and get details about GitLab projects
 - 📝 **Issues** - List, read, search, and comment on issues
 - 🔀 **Merge Requests** - List, read, update, approve, and merge MRs
@@ -132,6 +133,41 @@ uv run python -m mcp_gitlab
 ```
 
 ## Available Tools
+
+### Authentication & User Info
+
+#### `gitlab_get_current_user`
+Get the currently authenticated user's profile information.
+```json
+{}
+```
+
+Returns comprehensive information including:
+- Basic info: ID, username, name, email
+- Profile details: bio, organization, job title
+- Account status: state, creation date, admin status
+- Permissions: can_create_group, can_create_project
+- Security: two_factor_enabled, external status
+
+#### `gitlab_get_user`
+Get details for a specific user by ID or username.
+```json
+{
+  "user_id": 12345
+}
+```
+or
+```json
+{
+  "username": "johndoe"
+}
+```
+
+Returns user information including:
+- Basic info: ID, username, name
+- Profile: avatar_url, web_url, bio
+- Organization details: company, job title
+- Account status and creation date
 
 ### Project Management
 

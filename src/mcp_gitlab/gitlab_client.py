@@ -460,6 +460,229 @@ class GitLabClient:
         return {"events": events, "user": user, "pagination": pagination}
 
     @retry_on_error()
+    def get_current_user(self) -> Dict[str, Any]:
+        """Get the currently authenticated user.
+        
+        Returns:
+            Dictionary with user information including:
+            - id: User ID
+            - username: Username
+            - name: Full name
+            - email: Email address
+            - state: Account state
+            - avatar_url: Avatar URL
+            - web_url: Profile URL
+            - created_at: Account creation date
+            - bio: User bio
+            - organization: Organization
+            - job_title: Job title
+            - public_email: Public email
+            - is_admin: Whether user is admin
+            - can_create_group: Whether user can create groups
+            - can_create_project: Whether user can create projects
+        """
+        user = self.gl.user
+        
+        # Get extended user info
+        return {
+            "id": getattr(user, "id", None),
+            "username": getattr(user, "username", None),
+            "name": getattr(user, "name", None),
+            "email": getattr(user, "email", None),
+            "state": getattr(user, "state", None),
+            "avatar_url": getattr(user, "avatar_url", None),
+            "web_url": getattr(user, "web_url", None),
+            "created_at": getattr(user, "created_at", None),
+            "bio": getattr(user, "bio", None),
+            "organization": getattr(user, "organization", None),
+            "job_title": getattr(user, "job_title", None),
+            "public_email": getattr(user, "public_email", None),
+            "is_admin": getattr(user, "is_admin", False),
+            "can_create_group": getattr(user, "can_create_group", True),
+            "can_create_project": getattr(user, "can_create_project", True),
+            "two_factor_enabled": getattr(user, "two_factor_enabled", False),
+            "external": getattr(user, "external", False),
+        }
+    
+    @retry_on_error()
+    def get_user(self, user_id: Optional[str] = None, username: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Get details for a specific user by ID or username.
+        
+        Args:
+            user_id: User ID (numeric)
+            username: Username (string)
+            
+        Returns:
+            Dictionary with user information or None if not found
+        """
+        if not user_id and not username:
+            raise ValueError("Either user_id or username must be provided")
+            
+        if user_id:
+            try:
+                user = self.gl.users.get(user_id)
+                return {
+                    "id": getattr(user, "id", None),
+                    "username": getattr(user, "username", None),
+                    "name": getattr(user, "name", None),
+                    "state": getattr(user, "state", None),
+                    "avatar_url": getattr(user, "avatar_url", None),
+                    "web_url": getattr(user, "web_url", None),
+                    "created_at": getattr(user, "created_at", None),
+                    "bio": getattr(user, "bio", None),
+                    "organization": getattr(user, "organization", None),
+                    "job_title": getattr(user, "job_title", None),
+                    "public_email": getattr(user, "public_email", None),
+                    "external": getattr(user, "external", False),
+                }
+            except gitlab.exceptions.GitlabGetError:
+                return None
+        else:
+            # Search by username
+            return self.get_user_by_username(username)
+
+    @retry_on_error()
+    def list_groups(
+        self,
+        search: Optional[str] = None,
+        owned: bool = False,
+        per_page: int = DEFAULT_PAGE_SIZE,
+        page: int = 1,
+    ) -> Dict[str, Any]:
+        """List accessible groups.
+        
+        Args:
+            search: Search term for group names/paths
+            owned: Only show groups user owns
+            per_page: Number of results per page
+            page: Page number
+            
+        Returns:
+            Dictionary with groups list and pagination info
+        """
+        kwargs = {
+            "get_all": False,
+            "per_page": min(per_page, MAX_PAGE_SIZE),
+            "page": page,
+        }
+        if search:
+            kwargs["search"] = search
+        if owned:
+            kwargs["owned"] = True
+            
+        response = self.gl.groups.list(**kwargs)
+        pagination = {
+            "page": page,
+            "per_page": per_page,
+            "total": getattr(response, "total", None),
+            "total_pages": getattr(response, "total_pages", None),
+            "next_page": getattr(response, "next_page", None),
+            "prev_page": getattr(response, "prev_page", None),
+        }
+        
+        groups = []
+        for group in response:
+            groups.append({
+                "id": getattr(group, "id", None),
+                "name": getattr(group, "name", None),
+                "path": getattr(group, "path", None),
+                "full_path": getattr(group, "full_path", None),
+                "description": getattr(group, "description", None),
+                "visibility": getattr(group, "visibility", None),
+                "web_url": getattr(group, "web_url", None),
+                "avatar_url": getattr(group, "avatar_url", None),
+                "parent_id": getattr(group, "parent_id", None),
+            })
+            
+        return {"groups": groups, "pagination": pagination}
+    
+    @retry_on_error()
+    def get_group(self, group_id: str, with_projects: bool = False) -> Dict[str, Any]:
+        """Get group details.
+        
+        Args:
+            group_id: Group ID or path
+            with_projects: Include projects in response
+            
+        Returns:
+            Dictionary with group information
+        """
+        group = self.gl.groups.get(group_id)
+        
+        result = {
+            "id": getattr(group, "id", None),
+            "name": getattr(group, "name", None),
+            "path": getattr(group, "path", None),
+            "full_path": getattr(group, "full_path", None),
+            "description": getattr(group, "description", None),
+            "visibility": getattr(group, "visibility", None),
+            "web_url": getattr(group, "web_url", None),
+            "avatar_url": getattr(group, "avatar_url", None),
+            "parent_id": getattr(group, "parent_id", None),
+            "created_at": getattr(group, "created_at", None),
+            "lfs_enabled": getattr(group, "lfs_enabled", False),
+            "request_access_enabled": getattr(group, "request_access_enabled", True),
+            "full_name": getattr(group, "full_name", None),
+            "projects_count": getattr(group, "statistics", {}).get("projects", 0) if hasattr(group, "statistics") else 0,
+        }
+        
+        if with_projects:
+            # Get first page of projects
+            projects_response = self.list_group_projects(group_id, per_page=20, page=1)
+            result["projects"] = projects_response.get("projects", [])
+            result["projects_pagination"] = projects_response.get("pagination", {})
+            
+        return result
+    
+    @retry_on_error()
+    def list_group_projects(
+        self,
+        group_id: str,
+        search: Optional[str] = None,
+        include_subgroups: bool = False,
+        per_page: int = DEFAULT_PAGE_SIZE,
+        page: int = 1,
+    ) -> Dict[str, Any]:
+        """List projects within a group.
+        
+        Args:
+            group_id: Group ID or path
+            search: Search term for project names
+            include_subgroups: Include projects from subgroups
+            per_page: Number of results per page
+            page: Page number
+            
+        Returns:
+            Dictionary with projects list and pagination info
+        """
+        group = self.gl.groups.get(group_id)
+        
+        kwargs = {
+            "get_all": False,
+            "per_page": min(per_page, MAX_PAGE_SIZE),
+            "page": page,
+            "include_subgroups": include_subgroups,
+        }
+        if search:
+            kwargs["search"] = search
+            
+        response = group.projects.list(**kwargs)
+        pagination = {
+            "page": page,
+            "per_page": per_page,
+            "total": getattr(response, "total", None),
+            "total_pages": getattr(response, "total_pages", None),
+            "next_page": getattr(response, "next_page", None),
+            "prev_page": getattr(response, "prev_page", None),
+        }
+        
+        return {
+            "projects": [self._project_to_dict(p) for p in response],
+            "pagination": pagination,
+            "group_id": group_id,
+        }
+
+    @retry_on_error()
     def summarize_issue(self, project_id: str, issue_iid: int, max_length: int = 500) -> Dict[str, Any]:
         """Generate an AI-friendly summary of an issue.
         

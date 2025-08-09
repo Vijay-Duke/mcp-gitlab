@@ -13,7 +13,9 @@ from mcp_gitlab.constants import (
     TOOL_GET_MR_NOTES, TOOL_LIST_BRANCHES, TOOL_LIST_PIPELINES,
     TOOL_LIST_USER_EVENTS, TOOL_LIST_COMMITS,
     TOOL_LIST_REPOSITORY_TREE, TOOL_LIST_TAGS, TOOL_LIST_RELEASES,
-    TOOL_LIST_PROJECT_MEMBERS, TOOL_LIST_PROJECT_HOOKS
+    TOOL_LIST_PROJECT_MEMBERS, TOOL_LIST_PROJECT_HOOKS,
+    TOOL_GET_CURRENT_USER, TOOL_GET_USER,
+    TOOL_LIST_GROUPS, TOOL_GET_GROUP, TOOL_LIST_GROUP_PROJECTS
 )
 
 logger = logging.getLogger(__name__)
@@ -220,6 +222,27 @@ def handle_list_pipelines(client: GitLabClient, arguments: Optional[Dict[str, An
     ref = get_argument(arguments, "ref")
     
     return client.get_pipelines(project_id, ref)
+
+
+# Authentication & User Handlers
+def handle_get_current_user(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting the current authenticated user"""
+    return client.get_current_user()
+
+
+def handle_get_user(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user details by ID or username"""
+    user_id = get_argument(arguments, "user_id")
+    username = get_argument(arguments, "username")
+    
+    if not user_id and not username:
+        raise ValueError("Either user_id or username must be provided")
+    
+    result = client.get_user(user_id=user_id, username=username)
+    if result is None:
+        raise ValueError(f"User not found: {user_id or username}")
+    
+    return result
 
 
 # User Event Handlers
@@ -481,11 +504,49 @@ def handle_batch_operations(client: GitLabClient, arguments: Optional[Dict[str, 
     return client.batch_operations(project_id, operations, stop_on_error)
 
 
+# Group handlers
+def handle_list_groups(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle listing groups"""
+    search = get_argument(arguments, "search")
+    owned = get_argument(arguments, "owned", False)
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.list_groups(search=search, owned=owned, per_page=per_page, page=page)
+
+
+def handle_get_group(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting single group"""
+    group_id = require_argument(arguments, "group_id")
+    with_projects = get_argument(arguments, "with_projects", False)
+    
+    return client.get_group(group_id, with_projects=with_projects)
+
+
+def handle_list_group_projects(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle listing projects within a group"""
+    group_id = require_argument(arguments, "group_id")
+    search = get_argument(arguments, "search")
+    include_subgroups = get_argument(arguments, "include_subgroups", False)
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.list_group_projects(
+        group_id, 
+        search=search, 
+        include_subgroups=include_subgroups,
+        per_page=per_page, 
+        page=page
+    )
+
+
 # Tool handler mapping
 TOOL_HANDLERS = {
     TOOL_LIST_PROJECTS: handle_list_projects,
     TOOL_GET_PROJECT: handle_get_project,
     TOOL_GET_CURRENT_PROJECT: handle_get_current_project,
+    TOOL_GET_CURRENT_USER: handle_get_current_user,
+    TOOL_GET_USER: handle_get_user,
     TOOL_LIST_ISSUES: handle_list_issues,
     "gitlab_get_issue": handle_get_issue,
     TOOL_LIST_MRS: handle_list_merge_requests,
@@ -546,4 +607,9 @@ TOOL_HANDLERS = {
     
     # Batch operations handler
     "gitlab_batch_operations": handle_batch_operations,
+    
+    # Group handlers
+    TOOL_LIST_GROUPS: handle_list_groups,
+    TOOL_GET_GROUP: handle_get_group,
+    TOOL_LIST_GROUP_PROJECTS: handle_list_group_projects,
 }

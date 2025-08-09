@@ -31,7 +31,8 @@ try:
         TOOL_LIST_BRANCHES, TOOL_LIST_PIPELINES,
         TOOL_LIST_COMMITS, TOOL_LIST_REPOSITORY_TREE, TOOL_LIST_TAGS,
         TOOL_LIST_USER_EVENTS, TOOL_LIST_PROJECT_MEMBERS, TOOL_LIST_PROJECT_HOOKS,
-        TOOL_LIST_RELEASES
+        TOOL_LIST_RELEASES, TOOL_GET_CURRENT_USER, TOOL_GET_USER,
+        TOOL_LIST_GROUPS, TOOL_GET_GROUP, TOOL_LIST_GROUP_PROJECTS
     )
     from .tool_handlers import TOOL_HANDLERS, get_project_id_or_detect
     from . import tool_descriptions as desc
@@ -59,7 +60,8 @@ except ImportError as e:
             TOOL_LIST_BRANCHES, TOOL_LIST_PIPELINES,
             TOOL_LIST_COMMITS, TOOL_LIST_REPOSITORY_TREE, TOOL_LIST_TAGS,
             TOOL_LIST_USER_EVENTS, TOOL_LIST_PROJECT_MEMBERS, TOOL_LIST_PROJECT_HOOKS,
-            TOOL_LIST_RELEASES
+            TOOL_LIST_RELEASES, TOOL_GET_CURRENT_USER, TOOL_GET_USER,
+            TOOL_LIST_GROUPS, TOOL_GET_GROUP, TOOL_LIST_GROUP_PROJECTS
         )
         from mcp_gitlab.tool_handlers import TOOL_HANDLERS, get_project_id_or_detect
         import mcp_gitlab.tool_descriptions as desc
@@ -78,7 +80,8 @@ except ImportError as e:
             TOOL_LIST_BRANCHES, TOOL_LIST_PIPELINES,
             TOOL_LIST_COMMITS, TOOL_LIST_REPOSITORY_TREE, TOOL_LIST_TAGS,
             TOOL_LIST_USER_EVENTS, TOOL_LIST_PROJECT_MEMBERS, TOOL_LIST_PROJECT_HOOKS,
-            TOOL_LIST_RELEASES
+            TOOL_LIST_RELEASES, TOOL_GET_CURRENT_USER, TOOL_GET_USER,
+            TOOL_LIST_GROUPS, TOOL_GET_GROUP, TOOL_LIST_GROUP_PROJECTS
         )
         from tool_handlers import TOOL_HANDLERS, get_project_id_or_detect
         import tool_descriptions as desc
@@ -162,6 +165,69 @@ async def handle_list_tools() -> List[types.Tool]:
                 "properties": {
                     "path": {"type": "string", "description": desc.DESC_GIT_PATH}
                 }
+            }
+        ),
+        
+        # Authentication & User Info
+        types.Tool(
+            name=TOOL_GET_CURRENT_USER,
+            description=desc.DESC_GET_CURRENT_USER,
+            inputSchema={
+                "type": "object",
+                "properties": {}
+            }
+        ),
+        types.Tool(
+            name=TOOL_GET_USER,
+            description=desc.DESC_GET_USER,
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "integer", "description": desc.DESC_USER_ID},
+                    "username": {"type": "string", "description": desc.DESC_USERNAME}
+                }
+            }
+        ),
+        
+        # Group Management
+        types.Tool(
+            name=TOOL_LIST_GROUPS,
+            description=desc.DESC_LIST_GROUPS,
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "search": {"type": "string", "description": desc.DESC_SEARCH_TERM + " for groups"},
+                    "owned": {"type": "boolean", "description": desc.DESC_OWNED_GROUPS, "default": False},
+                    "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                    "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+                }
+            }
+        ),
+        types.Tool(
+            name=TOOL_GET_GROUP,
+            description=desc.DESC_GET_GROUP,
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "group_id": {"type": "string", "description": desc.DESC_GROUP_ID},
+                    "with_projects": {"type": "boolean", "description": desc.DESC_WITH_PROJECTS, "default": False}
+                },
+                "required": ["group_id"]
+            }
+        ),
+        types.Tool(
+            name=TOOL_LIST_GROUP_PROJECTS,
+            description=desc.DESC_LIST_GROUP_PROJECTS,
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "group_id": {"type": "string", "description": desc.DESC_GROUP_ID},
+                    "search": {"type": "string", "description": desc.DESC_SEARCH_TERM + " for projects"},
+                    "include_subgroups": {"type": "boolean", "description": desc.DESC_INCLUDE_SUBGROUPS, "default": False},
+                    "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                    "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+                },
+                "required": ["group_id"]
             }
         ),
         

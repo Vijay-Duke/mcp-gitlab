@@ -4,7 +4,7 @@ from unittest.mock import Mock
 from mcp_gitlab.tool_handlers import (
     get_argument, require_argument, get_project_id_or_detect,
     require_project_id, handle_list_projects, handle_get_project,
-    handle_get_current_project,
+    handle_get_current_project, handle_get_current_user, handle_get_user,
     handle_list_issues, handle_get_issue, handle_summarize_issue,
     handle_list_merge_requests, handle_get_merge_request,
     handle_update_merge_request, handle_close_merge_request,
@@ -15,7 +15,10 @@ from mcp_gitlab.tool_handlers import (
     handle_rebase_merge_request, handle_search_projects,
     TOOL_HANDLERS
 )
-from mcp_gitlab.constants import ERROR_NO_PROJECT, DEFAULT_PAGE_SIZE
+from mcp_gitlab.constants import (
+    ERROR_NO_PROJECT, DEFAULT_PAGE_SIZE,
+    TOOL_GET_CURRENT_USER, TOOL_GET_USER
+)
 
 
 class TestHelperFunctions:
@@ -86,6 +89,70 @@ class TestHelperFunctions:
         client.get_project_from_git.return_value = None
         with pytest.raises(ValueError, match=ERROR_NO_PROJECT):
             require_project_id(client, {})
+
+
+class TestAuthenticationHandlers:
+    """Test authentication and user handlers"""
+    
+    def test_handle_get_current_user(self):
+        """Test getting current authenticated user"""
+        client = Mock()
+        client.get_current_user.return_value = {
+            "id": 123,
+            "username": "johndoe",
+            "name": "John Doe",
+            "email": "john@example.com"
+        }
+        
+        result = handle_get_current_user(client, None)
+        
+        client.get_current_user.assert_called_once()
+        assert result["id"] == 123
+        assert result["username"] == "johndoe"
+    
+    def test_handle_get_user_by_id(self):
+        """Test getting user by ID"""
+        client = Mock()
+        client.get_user.return_value = {
+            "id": 456,
+            "username": "janedoe",
+            "name": "Jane Doe"
+        }
+        
+        result = handle_get_user(client, {"user_id": 456})
+        
+        client.get_user.assert_called_once_with(user_id=456, username=None)
+        assert result["id"] == 456
+        assert result["username"] == "janedoe"
+    
+    def test_handle_get_user_by_username(self):
+        """Test getting user by username"""
+        client = Mock()
+        client.get_user.return_value = {
+            "id": 789,
+            "username": "testuser",
+            "name": "Test User"
+        }
+        
+        result = handle_get_user(client, {"username": "testuser"})
+        
+        client.get_user.assert_called_once_with(user_id=None, username="testuser")
+        assert result["username"] == "testuser"
+    
+    def test_handle_get_user_not_found(self):
+        """Test getting user that doesn't exist"""
+        client = Mock()
+        client.get_user.return_value = None
+        
+        with pytest.raises(ValueError, match="User not found: 999"):
+            handle_get_user(client, {"user_id": 999})
+    
+    def test_handle_get_user_no_params(self):
+        """Test getting user without parameters"""
+        client = Mock()
+        
+        with pytest.raises(ValueError, match="Either user_id or username must be provided"):
+            handle_get_user(client, {})
 
 
 class TestProjectHandlers:
@@ -415,6 +482,8 @@ class TestToolHandlerMapping:
             "gitlab_list_projects",
             "gitlab_get_project",
             "gitlab_get_current_project",
+            "gitlab_get_current_user",
+            "gitlab_get_user",
             "gitlab_list_issues",
             "gitlab_get_issue",
             "gitlab_list_merge_requests",
