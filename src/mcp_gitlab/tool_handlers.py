@@ -9,9 +9,9 @@ from mcp_gitlab.gitlab_client import GitLabClient
 from mcp_gitlab.constants import (
     DEFAULT_PAGE_SIZE, SMALL_PAGE_SIZE, DEFAULT_MAX_BODY_LENGTH,
     ERROR_NO_PROJECT, TOOL_LIST_PROJECTS, TOOL_GET_PROJECT,
-    TOOL_DETECT_PROJECT, TOOL_GET_CURRENT_PROJECT, TOOL_LIST_ISSUES, TOOL_LIST_MRS,
+    TOOL_GET_CURRENT_PROJECT, TOOL_LIST_ISSUES, TOOL_LIST_MRS,
     TOOL_GET_MR_NOTES, TOOL_LIST_BRANCHES, TOOL_LIST_PIPELINES,
-    TOOL_GET_USER_EVENTS, TOOL_LIST_USER_EVENTS, TOOL_LIST_COMMITS,
+    TOOL_LIST_USER_EVENTS, TOOL_LIST_COMMITS,
     TOOL_LIST_REPOSITORY_TREE, TOOL_LIST_TAGS, TOOL_LIST_RELEASES,
     TOOL_LIST_PROJECT_MEMBERS, TOOL_LIST_PROJECT_HOOKS
 )
@@ -80,14 +80,6 @@ def handle_get_current_project(client: GitLabClient, arguments: Optional[Dict[st
     return result
 
 
-def handle_detect_project(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """Handle detecting project from git"""
-    path = get_argument(arguments, "path", ".")
-    result = client.get_project_from_git(path)
-
-    if not result:
-        return {"error": ERROR_NO_PROJECT}
-    return result
 
 
 # Issue Handlers
@@ -493,7 +485,6 @@ def handle_batch_operations(client: GitLabClient, arguments: Optional[Dict[str, 
 TOOL_HANDLERS = {
     TOOL_LIST_PROJECTS: handle_list_projects,
     TOOL_GET_PROJECT: handle_get_project,
-    TOOL_DETECT_PROJECT: handle_detect_project,
     TOOL_GET_CURRENT_PROJECT: handle_get_current_project,
     TOOL_LIST_ISSUES: handle_list_issues,
     "gitlab_get_issue": handle_get_issue,
@@ -501,9 +492,7 @@ TOOL_HANDLERS = {
     "gitlab_get_merge_request": handle_get_merge_request,
     TOOL_GET_MR_NOTES: handle_get_merge_request_notes,
     "gitlab_get_file_content": handle_get_file_content,
-    "gitlab_get_repository_tree": handle_get_repository_tree,
-    TOOL_LIST_REPOSITORY_TREE: handle_get_repository_tree,  # Same handler, new name
-    "gitlab_get_commits": handle_get_commits,
+    TOOL_LIST_REPOSITORY_TREE: handle_get_repository_tree,
     TOOL_LIST_COMMITS: handle_get_commits,  # Same handler, new name
     "gitlab_get_commit": handle_get_commit,
     "gitlab_get_commit_diff": handle_get_commit_diff,
@@ -511,8 +500,7 @@ TOOL_HANDLERS = {
     "gitlab_search_in_project": handle_search_in_project,
     TOOL_LIST_BRANCHES: handle_list_branches,
     TOOL_LIST_PIPELINES: handle_list_pipelines,
-    TOOL_GET_USER_EVENTS: handle_get_user_events,
-    TOOL_LIST_USER_EVENTS: handle_get_user_events,  # Same handler, new name
+    TOOL_LIST_USER_EVENTS: handle_get_user_events,
     
     # MR lifecycle handlers
     "gitlab_update_merge_request": handle_update_merge_request,
@@ -528,7 +516,6 @@ TOOL_HANDLERS = {
     "gitlab_get_merge_request_approvals": handle_get_merge_request_approvals,
     
     # Repository handlers
-    "gitlab_get_tags": handle_get_tags,
     TOOL_LIST_TAGS: handle_get_tags,  # Same handler, new name
     "gitlab_create_commit": handle_create_commit,
     "gitlab_compare_refs": handle_compare_refs,
@@ -536,9 +523,7 @@ TOOL_HANDLERS = {
     # Release and member handlers
     "gitlab_list_releases": handle_list_releases,
     TOOL_LIST_RELEASES: handle_list_releases,  # Same handler, new name
-    "gitlab_get_project_members": handle_get_project_members,
     TOOL_LIST_PROJECT_MEMBERS: handle_get_project_members,  # Same handler, new name
-    "gitlab_get_project_hooks": handle_get_project_hooks,
     TOOL_LIST_PROJECT_HOOKS: handle_get_project_hooks,  # Same handler, new name
     
     # MR advanced handlers

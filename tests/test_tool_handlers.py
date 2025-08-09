@@ -4,7 +4,7 @@ from unittest.mock import Mock
 from mcp_gitlab.tool_handlers import (
     get_argument, require_argument, get_project_id_or_detect,
     require_project_id, handle_list_projects, handle_get_project,
-    handle_get_current_project, handle_detect_project,
+    handle_get_current_project,
     handle_list_issues, handle_get_issue,
     handle_list_merge_requests, handle_get_merge_request,
     handle_update_merge_request, handle_close_merge_request,
@@ -136,25 +136,6 @@ class TestProjectHandlers:
         with pytest.raises(ValueError, match="project_id is required"):
             handle_get_project(client, {})
     
-    def test_handle_detect_project_found(self):
-        """Test detecting project successfully"""
-        client = Mock()
-        client.get_project_from_git.return_value = {"id": 123}
-        
-        result = handle_detect_project(client, {"path": "/some/path"})
-        
-        client.get_project_from_git.assert_called_once_with("/some/path")
-        assert result == {"id": 123}
-    
-    def test_handle_detect_project_not_found(self):
-        """Test detecting project when not found"""
-        client = Mock()
-        client.get_project_from_git.return_value = None
-        
-        result = handle_detect_project(client, {})
-
-        assert result == {"error": ERROR_NO_PROJECT}
-
     def test_handle_search_projects(self):
         """Test searching projects"""
         client = Mock()
@@ -407,22 +388,21 @@ class TestToolHandlerMapping:
             "gitlab_list_projects",
             "gitlab_get_project",
             "gitlab_get_current_project",
-            "gitlab_detect_project",
             "gitlab_list_issues",
             "gitlab_get_issue",
             "gitlab_list_merge_requests",
             "gitlab_get_merge_request",
             "gitlab_get_merge_request_notes",
             "gitlab_get_file_content",
-            "gitlab_get_repository_tree",
-            "gitlab_get_commits",
+            "gitlab_list_repository_tree",
+            "gitlab_list_commits",
             "gitlab_get_commit",
             "gitlab_get_commit_diff",
             "gitlab_search_projects",
             "gitlab_search_in_project",
             "gitlab_list_branches",
             "gitlab_list_pipelines",
-            "gitlab_get_user_events",
+            "gitlab_list_user_events",
             # Newly implemented merge request operations
             "gitlab_update_merge_request",
             "gitlab_close_merge_request",
