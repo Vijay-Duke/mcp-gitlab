@@ -509,9 +509,11 @@ class GitLabClient:
         user_comments = [n for n in notes if not n.get("system", False)]
         
         # Truncate description if needed
-        description = issue.get("description", "") or ""
+        description = issue.get("description", "")
+        truncated_description = False
         if len(description) > max_length:
             description = description[:max_length] + "... [truncated]"
+            truncated_description = True
         
         # Create summary
         summary = {
@@ -531,7 +533,7 @@ class GitLabClient:
             "summary_info": {
                 "total_comments": len(all_notes),
                 "user_comments": len(user_comments),
-                "truncated_description": len(description) > max_length,
+                "truncated_description": truncated_description,
                 "truncated_comments": len(user_comments) > 10
             }
         }
