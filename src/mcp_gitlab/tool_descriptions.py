@@ -1887,7 +1887,7 @@ Returns: Updated snippet information
 
 Related tools:
 - gitlab_get_snippet: View current content before updating
-- gitlab_create_snippet: Create new instead of updating
+- gitlab_create_snippet: Create new instead of updating"""
 
 # ============================================================================
 # JOB AND ARTIFACT PARAMETER DESCRIPTIONS
@@ -1988,4 +1988,4 @@ Example response:
 
 Related tools:
 - gitlab_list_pipeline_jobs: Jobs for specific pipeline
-- gitlab_list_pipelines: Find pipeline information""""""
+- gitlab_list_pipelines: Find pipeline information"""
