@@ -235,6 +235,8 @@ class TestGitDetector:
         # Invalid URLs
         assert GitDetector.is_gitlab_url("not-a-url") is False
         assert GitDetector.is_gitlab_url("https://gitlab.com/project") is False
+        # Non-GitLab host should also return False
+        assert GitDetector.is_gitlab_url("https://github.com/user/repo.git") is False
     
     @pytest.mark.unit
     def test_is_gitlab_url_with_host_check(self):

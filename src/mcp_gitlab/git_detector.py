@@ -264,5 +264,8 @@ class GitDetector:
             url_host = parsed["host"].lower().replace("www.", "")
             check_host = gitlab_host.lower().replace("www.", "").replace("https://", "").replace("http://", "").split("/")[0]
             return url_host == check_host
-        
-        return True
+        # Default behavior: ensure the URL points to a GitLab host
+        # Some non-GitLab URLs (like GitHub) can still be parsed by
+        # ``parse_gitlab_url``; we only want to return True when the
+        # host clearly refers to a GitLab instance.
+        return "gitlab" in parsed["host"].lower()
