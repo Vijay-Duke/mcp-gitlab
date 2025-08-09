@@ -193,3 +193,14 @@ TOOL_LIST_USER_EVENTS = "gitlab_list_user_events"
 TOOL_LIST_PROJECT_MEMBERS = "gitlab_list_project_members"
 TOOL_LIST_PROJECT_HOOKS = "gitlab_list_project_hooks"
 TOOL_LIST_RELEASES = "gitlab_list_releases"
+
+# Group tools
+TOOL_LIST_GROUPS = "gitlab_list_groups"
+TOOL_GET_GROUP = "gitlab_get_group"
+TOOL_LIST_GROUP_PROJECTS = "gitlab_list_group_projects"
+
+# Snippets tools
+TOOL_LIST_SNIPPETS = "gitlab_list_snippets"
+TOOL_GET_SNIPPET = "gitlab_get_snippet"
+TOOL_CREATE_SNIPPET = "gitlab_create_snippet"
+TOOL_UPDATE_SNIPPET = "gitlab_update_snippet"
