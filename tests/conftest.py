@@ -1,8 +1,12 @@
-"""Shared test fixtures and configuration"""
+"""Shared test fixtures and configuration."""
+
 import pytest
 import os
 import tempfile
 from unittest.mock import Mock, patch
+
+# Import stub modules for optional third-party dependencies
+from . import test_stubs  # noqa: F401
 
 # Test constants
 TEST_USER_NAME = "Test User"
@@ -17,7 +21,7 @@ def temp_git_repo(tmp_path):
     # Create .git directory
     git_dir = tmp_path / ".git"
     git_dir.mkdir()
-    
+
     # Create config file
     config_file = git_dir / "config"
     config_content = """
@@ -32,11 +36,11 @@ def temp_git_repo(tmp_path):
     merge = refs/heads/main
 """
     config_file.write_text(config_content)
-    
+
     # Create HEAD file
     head_file = git_dir / "HEAD"
     head_file.write_text("ref: refs/heads/main\n")
-    
+
     return tmp_path
 
 
@@ -46,7 +50,7 @@ def mock_gitlab_config():
     from mcp_gitlab.gitlab_client import GitLabConfig
     return GitLabConfig(
         url="https://gitlab.com",
-        private_token="test-token-12345"
+        private_token="test-token-12345",
     )
 
 
@@ -63,7 +67,7 @@ def mock_project_data():
         "default_branch": "main",
         "visibility": "private",
         "created_at": "2024-01-01T00:00:00Z",
-        "last_activity_at": "2024-01-15T12:00:00Z"
+        "last_activity_at": "2024-01-15T12:00:00Z",
     }
 
 
@@ -78,7 +82,7 @@ def mock_issue_data():
             "state": "opened",
             "created_at": "2024-01-01T10:00:00Z",
             "author": {"name": TEST_USER_NAME, "username": TEST_USERNAME},
-            "labels": ["bug", "priority::high"]
+            "labels": ["bug", "priority::high"],
         },
         {
             "iid": 2,
@@ -87,8 +91,8 @@ def mock_issue_data():
             "state": "closed",
             "created_at": "2024-01-02T10:00:00Z",
             "author": {"name": "Another User", "username": "anotheruser"},
-            "labels": ["feature"]
-        }
+            "labels": ["feature"],
+        },
     ]
 
 
@@ -105,7 +109,7 @@ def mock_merge_request_data():
             "target_branch": "main",
             "author": {"name": "Developer", "username": "dev"},
             "created_at": "2024-01-10T14:00:00Z",
-            "merge_status": "can_be_merged"
+            "merge_status": "can_be_merged",
         },
         {
             "iid": 11,
@@ -117,8 +121,8 @@ def mock_merge_request_data():
             "author": {"name": "Developer", "username": "dev"},
             "created_at": "2024-01-11T14:00:00Z",
             "merged_at": "2024-01-11T16:00:00Z",
-            "merge_status": "merged"
-        }
+            "merge_status": "merged",
+        },
     ]
 
 
@@ -134,7 +138,7 @@ def mock_commit_data():
             "author_name": "Test Developer",
             "author_email": "dev@example.com",
             "created_at": "2024-01-15T10:00:00Z",
-            "parent_ids": ["xyz789fed321"]
+            "parent_ids": ["xyz789fed321"],
         },
         {
             "id": "xyz789fed321",
@@ -144,8 +148,8 @@ def mock_commit_data():
             "author_name": "Test Developer",
             "author_email": "dev@example.com",
             "created_at": "2024-01-01T09:00:00Z",
-            "parent_ids": []
-        }
+            "parent_ids": [],
+        },
     ]
 
 
@@ -153,27 +157,9 @@ def mock_commit_data():
 def mock_file_tree_data():
     """Mock GitLab repository tree data"""
     return [
-        {
-            "id": "tree1",
-            "name": "src",
-            "type": "tree",
-            "path": "src",
-            "mode": "040000"
-        },
-        {
-            "id": "file1",
-            "name": "README.md",
-            "type": "blob",
-            "path": "README.md",
-            "mode": "100644"
-        },
-        {
-            "id": "file2",
-            "name": ".gitignore",
-            "type": "blob",
-            "path": ".gitignore",
-            "mode": "100644"
-        }
+        {"id": "tree1", "name": "src", "type": "tree", "path": "src", "mode": "040000"},
+        {"id": "file1", "name": "README.md", "type": "blob", "path": "README.md", "mode": "100644"},
+        {"id": "file2", "name": ".gitignore", "type": "blob", "path": ".gitignore", "mode": "100644"},
     ]
 
 
@@ -188,7 +174,7 @@ def mock_pipeline_data():
             "sha": "abc123def456",
             "created_at": "2024-01-15T10:30:00Z",
             "updated_at": "2024-01-15T10:45:00Z",
-            "web_url": "https://gitlab.com/test-group/test-project/-/pipelines/1001"
+            "web_url": "https://gitlab.com/test-group/test-project/-/pipelines/1001",
         },
         {
             "id": 1002,
@@ -197,8 +183,8 @@ def mock_pipeline_data():
             "sha": "def456ghi789",
             "created_at": "2024-01-15T11:00:00Z",
             "updated_at": "2024-01-15T11:10:00Z",
-            "web_url": "https://gitlab.com/test-group/test-project/-/pipelines/1002"
-        }
+            "web_url": "https://gitlab.com/test-group/test-project/-/pipelines/1002",
+        },
     ]
 
 
@@ -211,23 +197,15 @@ def mock_user_events_data():
             "action_name": "pushed",
             "created_at": "2024-01-15T10:00:00Z",
             "author": {"name": TEST_USER_NAME, "username": TEST_USERNAME},
-            "push_data": {
-                "commit_count": 1,
-                "ref": "main",
-                "commit_title": "Update README"
-            }
+            "push_data": {"commit_count": 1, "ref": "main", "commit_title": "Update README"},
         },
         {
             "id": 2,
             "action_name": "commented",
             "created_at": "2024-01-15T09:00:00Z",
             "author": {"name": TEST_USER_NAME, "username": TEST_USERNAME},
-            "note": {
-                "body": "This looks good!",
-                "noteable_type": "MergeRequest",
-                "noteable_iid": 10
-            }
-        }
+            "note": {"body": "This looks good!", "noteable_type": "MergeRequest", "noteable_iid": 10},
+        },
     ]
 
 
@@ -247,3 +225,27 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("GITLAB_PRIVATE_TOKEN", "test-token-env")
     monkeypatch.setenv("GITLAB_DEFAULT_PAGE_SIZE", "25")
     monkeypatch.setenv("GITLAB_LOG_LEVEL", "DEBUG")
+
+
+# ---------------------------------------------------------------------------
+# Asyncio test support
+# ---------------------------------------------------------------------------
+import asyncio
+
+
+def pytest_configure(config):  # pragma: no cover - test harness setup
+    config.addinivalue_line("markers", "asyncio: mark test to run on event loop")
+
+
+import inspect
+
+
+@pytest.hookimpl()
+def pytest_pyfunc_call(pyfuncitem):  # pragma: no cover - test harness setup
+    if pyfuncitem.get_closest_marker("asyncio"):
+        func = pyfuncitem.obj
+        params = inspect.signature(func).parameters
+        kwargs = {name: pyfuncitem.funcargs[name] for name in params}
+        asyncio.run(func(**kwargs))
+        return True
+    return None
