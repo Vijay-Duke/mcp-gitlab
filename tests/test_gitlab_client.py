@@ -228,6 +228,100 @@ class TestGitLabClient:
         assert result["state"] == "opened"
     
     @pytest.mark.unit
+    def test_summarize_issue(self, client):
+        """Test summarizing an issue"""
+        # Mock issue
+        mock_issue = Mock()
+        mock_issue.id = 101
+        mock_issue.iid = 1
+        mock_issue.title = "Test Issue"
+        mock_issue.description = "This is a long description " * 50  # Long description
+        mock_issue.state = "opened"
+        mock_issue.created_at = "2024-01-01T00:00:00Z"
+        mock_issue.updated_at = "2024-01-01T00:00:00Z"
+        mock_issue.labels = ["bug", "high-priority"]
+        mock_issue.web_url = "https://gitlab.com/group/project/issues/1"
+        mock_issue.author = {"username": "user1", "name": "User 1"}
+        
+        # Mock notes
+        mock_note1 = Mock()
+        mock_note1.id = 201
+        mock_note1.body = "This is the first comment"
+        mock_note1.created_at = "2024-01-02T00:00:00Z"
+        mock_note1.updated_at = "2024-01-02T00:00:00Z"
+        mock_note1.author = {"username": "user2", "name": "User 2"}
+        mock_note1.system = False
+        mock_note1.noteable_type = "Issue"
+        mock_note1.noteable_iid = 1
+        mock_note1.resolvable = False
+        mock_note1.resolved = False
+        
+        mock_note2 = Mock()
+        mock_note2.id = 202
+        mock_note2.body = "System note"
+        mock_note2.created_at = "2024-01-03T00:00:00Z"
+        mock_note2.updated_at = "2024-01-03T00:00:00Z"
+        mock_note2.author = {"username": "system", "name": "System"}
+        mock_note2.system = True
+        mock_note2.noteable_type = "Issue"
+        mock_note2.noteable_iid = 1
+        mock_note2.resolvable = False
+        mock_note2.resolved = False
+        
+        mock_note3 = Mock()
+        mock_note3.id = 203
+        mock_note3.body = "This is another user comment"
+        mock_note3.created_at = "2024-01-04T00:00:00Z"
+        mock_note3.updated_at = "2024-01-04T00:00:00Z"
+        mock_note3.author = {"username": "user3", "name": "User 3"}
+        mock_note3.system = False
+        mock_note3.noteable_type = "Issue"
+        mock_note3.noteable_iid = 1
+        mock_note3.resolvable = False
+        mock_note3.resolved = False
+        
+        # Mock responses
+        mock_project = Mock()
+        mock_project.issues.get.return_value = mock_issue
+        
+        mock_notes_response = mock_paginated_response(
+            [mock_note1, mock_note2, mock_note3], 
+            total=3, 
+            total_pages=1
+        )
+        mock_issue.notes.list.return_value = mock_notes_response
+        
+        client.gl.projects.get.return_value = mock_project
+        
+        # Call the method
+        result = client.summarize_issue("project-id", 1, max_length=100)
+        
+        # Assertions
+        assert "issue" in result
+        assert result["issue"]["iid"] == 1
+        assert result["issue"]["title"] == "Test Issue"
+        assert result["issue"]["state"] == "opened"
+        assert result["issue"]["labels"] == ["bug", "high-priority"]
+        
+        assert "description" in result
+        assert len(result["description"]) <= 100 + len("... [truncated]")
+        assert result["description"].endswith("... [truncated]")
+        
+        assert "comments_count" in result
+        assert result["comments_count"] == 2  # Only user comments, not system
+        
+        assert "comments" in result
+        assert len(result["comments"]) == 2
+        assert result["comments"][0]["body"] == "This is the first comment"
+        assert result["comments"][1]["body"] == "This is another user comment"
+        
+        assert "summary_info" in result
+        assert result["summary_info"]["total_comments"] == 3
+        assert result["summary_info"]["user_comments"] == 2
+        assert result["summary_info"]["truncated_description"] is True
+        assert result["summary_info"]["truncated_comments"] is False
+    
+    @pytest.mark.unit
     def test_get_merge_requests(self, client):
         """Test getting merge requests list"""
         mock_project = Mock()

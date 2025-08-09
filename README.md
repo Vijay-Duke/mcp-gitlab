@@ -340,7 +340,7 @@ Get a structured diff with context and size limits.
 ### Complete Tool List
 
 - **Projects**: `gitlab_list_projects`, `gitlab_get_project`, `gitlab_get_current_project`, `gitlab_search_projects`
-- **Issues**: `gitlab_list_issues`, `gitlab_get_issue`, `gitlab_add_issue_comment`
+- **Issues**: `gitlab_list_issues`, `gitlab_get_issue`, `gitlab_add_issue_comment`, `gitlab_summarize_issue`
 - **Merge Requests**: `gitlab_list_merge_requests`, `gitlab_get_merge_request`, `gitlab_update_merge_request`, `gitlab_close_merge_request`, `gitlab_merge_merge_request`, `gitlab_add_merge_request_comment`, `gitlab_get_merge_request_notes`, `gitlab_approve_merge_request`, `gitlab_get_merge_request_approvals`, `gitlab_get_merge_request_discussions`, `gitlab_resolve_discussion`, `gitlab_get_merge_request_changes`, `gitlab_rebase_merge_request`
 - **Repository**: `gitlab_get_file_content`, `gitlab_list_repository_tree`, `gitlab_list_commits`, `gitlab_get_commit`, `gitlab_get_commit_diff`, `gitlab_create_commit`, `gitlab_cherry_pick_commit`, `gitlab_compare_refs`, `gitlab_list_tags`
 - **Branches**: `gitlab_list_branches`
