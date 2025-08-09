@@ -384,6 +384,10 @@ class GitLabClient:
         return {"projects": [self._project_to_dict(p) for p in response], "pagination": pagination, "search_term": search}
 
     @retry_on_error()
+    def get_current_project(self, path: str = ".") -> Optional[Dict[str, Any]]:
+        """Get current project by inspecting git repository"""
+        return self.get_project_from_git(path)
+
     def get_project_from_git(self, path: str = ".") -> Optional[Dict[str, Any]]:
         detected = GitDetector.detect_gitlab_project(path)
         if not detected:

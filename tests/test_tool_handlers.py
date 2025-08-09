@@ -4,14 +4,16 @@ from unittest.mock import Mock
 from mcp_gitlab.tool_handlers import (
     get_argument, require_argument, get_project_id_or_detect,
     require_project_id, handle_list_projects, handle_get_project,
-    handle_detect_project, handle_list_issues, handle_get_issue,
+    handle_get_current_project, handle_detect_project,
+    handle_list_issues, handle_get_issue,
     handle_list_merge_requests, handle_get_merge_request,
     handle_update_merge_request, handle_close_merge_request,
     handle_merge_merge_request, handle_add_merge_request_comment,
     handle_get_merge_request_notes, handle_approve_merge_request,
     handle_get_merge_request_approvals, handle_get_merge_request_discussions,
     handle_resolve_discussion, handle_get_merge_request_changes,
-    handle_rebase_merge_request, TOOL_HANDLERS
+    handle_rebase_merge_request, handle_search_projects,
+    TOOL_HANDLERS
 )
 from mcp_gitlab.constants import ERROR_NO_PROJECT, DEFAULT_PAGE_SIZE
 
@@ -150,7 +152,54 @@ class TestProjectHandlers:
         client.get_project_from_git.return_value = None
         
         result = handle_detect_project(client, {})
-        
+
+        assert result == {"error": ERROR_NO_PROJECT}
+
+    def test_handle_search_projects(self):
+        """Test searching projects"""
+        client = Mock()
+        client.search_projects.return_value = {"data": []}
+
+        result = handle_search_projects(client, {"search": "test", "per_page": 10, "page": 2})
+
+        client.search_projects.assert_called_once_with("test", 10, 2)
+        assert result == {"data": []}
+
+    def test_handle_search_projects_defaults(self):
+        """Test searching projects with default pagination"""
+        client = Mock()
+        client.search_projects.return_value = {"data": []}
+
+        result = handle_search_projects(client, {"search": "test"})
+
+        client.search_projects.assert_called_once_with("test", DEFAULT_PAGE_SIZE, 1)
+        assert result == {"data": []}
+
+    def test_handle_search_projects_missing_term(self):
+        """Test searching projects requires term"""
+        client = Mock()
+
+        with pytest.raises(ValueError, match="search is required"):
+            handle_search_projects(client, {})
+
+    def test_handle_get_current_project_found(self):
+        """Test getting current project via git detection"""
+        client = Mock()
+        client.get_current_project.return_value = {"id": 123}
+
+        result = handle_get_current_project(client, {"path": "/repo"})
+
+        client.get_current_project.assert_called_once_with("/repo")
+        assert result == {"id": 123}
+
+    def test_handle_get_current_project_not_found(self):
+        """Test getting current project when not found"""
+        client = Mock()
+        client.get_current_project.return_value = None
+
+        result = handle_get_current_project(client, {})
+
+        client.get_current_project.assert_called_once_with(".")
         assert result == {"error": ERROR_NO_PROJECT}
 
 
@@ -356,7 +405,8 @@ class TestToolHandlerMapping:
         """Test all handlers are in the mapping"""
         expected_tools = [
             "gitlab_list_projects",
-            "gitlab_get_project", 
+            "gitlab_get_project",
+            "gitlab_get_current_project",
             "gitlab_detect_project",
             "gitlab_list_issues",
             "gitlab_get_issue",
