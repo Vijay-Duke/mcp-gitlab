@@ -11,7 +11,7 @@ A Model Context Protocol (MCP) server that provides comprehensive GitLab API int
 - 🔀 **Merge Requests** - List, read, update, approve, and merge MRs
 - 📁 **Repository Files** - Browse, read, and commit changes to files
 - 🌳 **Branches & Tags** - List and manage branches and tags
-- 🔧 **CI/CD Pipelines** - View pipeline status and history
+- 🔧 **CI/CD Pipelines** - View pipeline status, jobs, and artifacts
 - 💬 **Discussions** - Read and resolve merge request discussions
 - 🎯 **Smart Operations** - Batch operations, AI summaries, and smart diffs
 
@@ -325,6 +325,39 @@ Compare two branches, tags, or commits.
 }
 ```
 
+### CI/CD Jobs and Artifacts
+
+#### `gitlab_list_pipeline_jobs`
+List jobs in a specific CI/CD pipeline.
+```json
+{
+  "project_id": "group/project",
+  "pipeline_id": 789,
+  "per_page": 20,
+  "page": 1
+}
+```
+
+#### `gitlab_list_project_jobs`
+List jobs for a project with optional scope filtering.
+```json
+{
+  "project_id": "group/project",
+  "scope": "failed",
+  "per_page": 25
+}
+```
+
+#### `gitlab_download_job_artifact`
+Get information about job artifacts (security note: content not downloaded).
+```json
+{
+  "project_id": "group/project",
+  "job_id": 456,
+  "artifact_path": "build.zip"
+}
+```
+
 ### Advanced Tools
 
 #### `gitlab_batch_operations`
@@ -380,7 +413,7 @@ Get a structured diff with context and size limits.
 - **Merge Requests**: `gitlab_list_merge_requests`, `gitlab_get_merge_request`, `gitlab_update_merge_request`, `gitlab_close_merge_request`, `gitlab_merge_merge_request`, `gitlab_add_merge_request_comment`, `gitlab_get_merge_request_notes`, `gitlab_approve_merge_request`, `gitlab_get_merge_request_approvals`, `gitlab_get_merge_request_discussions`, `gitlab_resolve_discussion`, `gitlab_get_merge_request_changes`, `gitlab_rebase_merge_request`
 - **Repository**: `gitlab_get_file_content`, `gitlab_list_repository_tree`, `gitlab_list_commits`, `gitlab_get_commit`, `gitlab_get_commit_diff`, `gitlab_create_commit`, `gitlab_cherry_pick_commit`, `gitlab_compare_refs`, `gitlab_list_tags`
 - **Branches**: `gitlab_list_branches`
-- **Pipelines**: `gitlab_list_pipelines`, `gitlab_summarize_pipeline`
+- **Pipelines & Jobs**: `gitlab_list_pipelines`, `gitlab_list_pipeline_jobs`, `gitlab_list_project_jobs`, `gitlab_download_job_artifact`, `gitlab_summarize_pipeline`
 - **Search**: `gitlab_search_projects`, `gitlab_search_in_project`
 - **Users**: `gitlab_list_user_events`, `gitlab_list_project_members`
 - **Releases**: `gitlab_list_releases`

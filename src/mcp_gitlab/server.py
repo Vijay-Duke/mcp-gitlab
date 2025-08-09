@@ -32,7 +32,9 @@ try:
         TOOL_LIST_COMMITS, TOOL_LIST_REPOSITORY_TREE, TOOL_LIST_TAGS,
         TOOL_LIST_USER_EVENTS, TOOL_LIST_PROJECT_MEMBERS, TOOL_LIST_PROJECT_HOOKS,
         TOOL_LIST_RELEASES, TOOL_GET_CURRENT_USER, TOOL_GET_USER,
-        TOOL_LIST_GROUPS, TOOL_GET_GROUP, TOOL_LIST_GROUP_PROJECTS
+        TOOL_LIST_GROUPS, TOOL_GET_GROUP, TOOL_LIST_GROUP_PROJECTS,
+        TOOL_LIST_SNIPPETS, TOOL_GET_SNIPPET, TOOL_CREATE_SNIPPET,
+        TOOL_UPDATE_SNIPPET, TOOL_LIST_PIPELINE_JOBS, TOOL_DOWNLOAD_JOB_ARTIFACT, TOOL_LIST_PROJECT_JOBS
     )
     from .tool_handlers import TOOL_HANDLERS, get_project_id_or_detect
     from . import tool_descriptions as desc
@@ -61,7 +63,9 @@ except ImportError as e:
             TOOL_LIST_COMMITS, TOOL_LIST_REPOSITORY_TREE, TOOL_LIST_TAGS,
             TOOL_LIST_USER_EVENTS, TOOL_LIST_PROJECT_MEMBERS, TOOL_LIST_PROJECT_HOOKS,
             TOOL_LIST_RELEASES, TOOL_GET_CURRENT_USER, TOOL_GET_USER,
-            TOOL_LIST_GROUPS, TOOL_GET_GROUP, TOOL_LIST_GROUP_PROJECTS
+            TOOL_LIST_GROUPS, TOOL_GET_GROUP, TOOL_LIST_GROUP_PROJECTS,
+            TOOL_LIST_SNIPPETS, TOOL_GET_SNIPPET, TOOL_CREATE_SNIPPET,
+            TOOL_UPDATE_SNIPPET, TOOL_LIST_PIPELINE_JOBS, TOOL_DOWNLOAD_JOB_ARTIFACT, TOOL_LIST_PROJECT_JOBS
         )
         from mcp_gitlab.tool_handlers import TOOL_HANDLERS, get_project_id_or_detect
         import mcp_gitlab.tool_descriptions as desc
@@ -81,7 +85,9 @@ except ImportError as e:
             TOOL_LIST_COMMITS, TOOL_LIST_REPOSITORY_TREE, TOOL_LIST_TAGS,
             TOOL_LIST_USER_EVENTS, TOOL_LIST_PROJECT_MEMBERS, TOOL_LIST_PROJECT_HOOKS,
             TOOL_LIST_RELEASES, TOOL_GET_CURRENT_USER, TOOL_GET_USER,
-            TOOL_LIST_GROUPS, TOOL_GET_GROUP, TOOL_LIST_GROUP_PROJECTS
+            TOOL_LIST_GROUPS, TOOL_GET_GROUP, TOOL_LIST_GROUP_PROJECTS,
+            TOOL_LIST_SNIPPETS, TOOL_GET_SNIPPET, TOOL_CREATE_SNIPPET,
+            TOOL_UPDATE_SNIPPET, TOOL_LIST_PIPELINE_JOBS, TOOL_DOWNLOAD_JOB_ARTIFACT, TOOL_LIST_PROJECT_JOBS
         )
         from tool_handlers import TOOL_HANDLERS, get_project_id_or_detect
         import tool_descriptions as desc
@@ -327,6 +333,65 @@ async def handle_list_tools() -> List[types.Tool]:
                     "ref": {"type": "string", "description": desc.DESC_REF},
                     "recursive": {"type": "boolean", "description": desc.DESC_RECURSIVE, "default": False}
                 }
+            }
+        ),
+        
+        # Snippets
+        types.Tool(
+            name=TOOL_LIST_SNIPPETS,
+            description=desc.DESC_LIST_SNIPPETS,
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": desc.DESC_PROJECT_ID},
+                    "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                    "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+                }
+            }
+        ),
+        types.Tool(
+            name=TOOL_GET_SNIPPET,
+            description=desc.DESC_GET_SNIPPET,
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": desc.DESC_PROJECT_ID},
+                    "snippet_id": {"type": "integer", "description": desc.DESC_SNIPPET_ID}
+                },
+                "required": ["snippet_id"]
+            }
+        ),
+        types.Tool(
+            name=TOOL_CREATE_SNIPPET,
+            description=desc.DESC_CREATE_SNIPPET,
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": desc.DESC_PROJECT_ID},
+                    "title": {"type": "string", "description": desc.DESC_SNIPPET_TITLE},
+                    "file_name": {"type": "string", "description": desc.DESC_SNIPPET_FILE_NAME},
+                    "content": {"type": "string", "description": desc.DESC_SNIPPET_CONTENT},
+                    "description": {"type": "string", "description": desc.DESC_SNIPPET_DESCRIPTION},
+                    "visibility": {"type": "string", "description": desc.DESC_SNIPPET_VISIBILITY, "enum": ["private", "internal", "public"], "default": "private"}
+                },
+                "required": ["title", "file_name", "content"]
+            }
+        ),
+        types.Tool(
+            name=TOOL_UPDATE_SNIPPET,
+            description=desc.DESC_UPDATE_SNIPPET,
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": desc.DESC_PROJECT_ID},
+                    "snippet_id": {"type": "integer", "description": desc.DESC_SNIPPET_ID},
+                    "title": {"type": "string", "description": desc.DESC_SNIPPET_TITLE},
+                    "file_name": {"type": "string", "description": desc.DESC_SNIPPET_FILE_NAME},
+                    "content": {"type": "string", "description": desc.DESC_SNIPPET_CONTENT},
+                    "description": {"type": "string", "description": desc.DESC_SNIPPET_DESCRIPTION},
+                    "visibility": {"type": "string", "description": desc.DESC_SNIPPET_VISIBILITY, "enum": ["private", "internal", "public"]}
+                },
+                "required": ["snippet_id"]
             }
         ),
         
@@ -830,6 +895,48 @@ async def handle_list_tools() -> List[types.Tool]:
                     "stop_on_error": {"type": "boolean", "description": desc.DESC_STOP_ON_ERROR, "default": True}
                 },
                 "required": ["operations"]
+            }
+        ),
+        
+        # Job and Artifact Tools
+        types.Tool(
+            name=TOOL_LIST_PIPELINE_JOBS,
+            description=desc.DESC_LIST_PIPELINE_JOBS,
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": desc.DESC_PROJECT_ID},
+                    "pipeline_id": {"type": "integer", "description": desc.DESC_PIPELINE_ID},
+                    "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                    "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+                },
+                "required": ["pipeline_id"]
+            }
+        ),
+        types.Tool(
+            name=TOOL_DOWNLOAD_JOB_ARTIFACT,
+            description=desc.DESC_DOWNLOAD_JOB_ARTIFACT,
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": desc.DESC_PROJECT_ID},
+                    "job_id": {"type": "integer", "description": desc.DESC_JOB_ID},
+                    "artifact_path": {"type": "string", "description": desc.DESC_ARTIFACT_PATH}
+                },
+                "required": ["job_id"]
+            }
+        ),
+        types.Tool(
+            name=TOOL_LIST_PROJECT_JOBS,
+            description=desc.DESC_LIST_PROJECT_JOBS,
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": desc.DESC_PROJECT_ID},
+                    "scope": {"type": "string", "description": desc.DESC_JOB_SCOPE, "enum": ["created", "pending", "running", "failed", "success", "canceled", "skipped", "waiting_for_resource", "manual"]},
+                    "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                    "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+                }
             }
         )
     ]

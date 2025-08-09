@@ -682,6 +682,325 @@ class GitLabClient:
             "group_id": group_id,
         }
 
+    @staticmethod
+    def _snippet_to_dict(snippet: Any) -> Dict[str, Any]:
+        """Convert snippet object to dictionary"""
+        return {
+            "id": getattr(snippet, "id", None),
+            "title": getattr(snippet, "title", None),
+            "file_name": getattr(snippet, "file_name", None),
+            "description": getattr(snippet, "description", None),
+            "visibility": getattr(snippet, "visibility", None),
+            "author": getattr(snippet, "author", None),
+            "created_at": getattr(snippet, "created_at", None),
+            "updated_at": getattr(snippet, "updated_at", None),
+            "web_url": getattr(snippet, "web_url", None),
+            "raw_url": getattr(snippet, "raw_url", None),
+        }
+
+    @retry_on_error()
+    def list_snippets(
+        self,
+        project_id: str,
+        per_page: int = DEFAULT_PAGE_SIZE,
+        page: int = 1,
+    ) -> Dict[str, Any]:
+        """List project snippets.
+        
+        Args:
+            project_id: The project ID or path
+            per_page: Number of results per page
+            page: Page number
+            
+        Returns:
+            Dictionary with snippets list and pagination info
+        """
+        project = self.gl.projects.get(project_id)
+        kwargs = {
+            "get_all": False,
+            "per_page": min(per_page, MAX_PAGE_SIZE),
+            "page": page,
+        }
+        
+        response = project.snippets.list(**kwargs)
+        pagination = {
+            "page": page,
+            "per_page": per_page,
+            "total": getattr(response, "total", None),
+            "total_pages": getattr(response, "total_pages", None),
+            "next_page": getattr(response, "next_page", None),
+            "prev_page": getattr(response, "prev_page", None),
+        }
+        
+        return {
+            "snippets": [self._snippet_to_dict(s) for s in response],
+            "pagination": pagination,
+            "project_id": project_id,
+        }
+
+    @retry_on_error()
+    def get_snippet(self, project_id: str, snippet_id: int) -> Dict[str, Any]:
+        """Get a specific snippet with content.
+        
+        Args:
+            project_id: The project ID or path
+            snippet_id: The snippet ID
+            
+        Returns:
+            Dictionary with snippet details and content
+        """
+        project = self.gl.projects.get(project_id)
+        snippet = project.snippets.get(snippet_id)
+        
+        result = self._snippet_to_dict(snippet)
+        result["content"] = getattr(snippet, "content", "")
+        
+        return result
+
+    @retry_on_error()
+    def create_snippet(
+        self,
+        project_id: str,
+        title: str,
+        file_name: str,
+        content: str,
+        description: Optional[str] = None,
+        visibility: str = "private"
+    ) -> Dict[str, Any]:
+        """Create a new snippet.
+        
+        Args:
+            project_id: The project ID or path
+            title: Snippet title
+            file_name: File name for the snippet
+            content: Snippet content
+            description: Optional description
+            visibility: Snippet visibility (private, internal, public)
+            
+        Returns:
+            Dictionary with created snippet details
+        """
+        project = self.gl.projects.get(project_id)
+        
+        snippet_data = {
+            "title": title,
+            "file_name": file_name,
+            "content": content,
+            "visibility": visibility,
+        }
+        
+        if description:
+            snippet_data["description"] = description
+            
+        snippet = project.snippets.create(snippet_data)
+        return self._snippet_to_dict(snippet)
+
+    @retry_on_error()
+    def update_snippet(
+        self,
+        project_id: str,
+        snippet_id: int,
+        title: Optional[str] = None,
+        file_name: Optional[str] = None,
+        content: Optional[str] = None,
+        description: Optional[str] = None,
+        visibility: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Update an existing snippet.
+        
+        Args:
+            project_id: The project ID or path
+            snippet_id: The snippet ID
+            title: Optional new title
+            file_name: Optional new file name
+            content: Optional new content
+            description: Optional new description
+            visibility: Optional new visibility
+            
+        Returns:
+            Dictionary with updated snippet details
+        """
+        project = self.gl.projects.get(project_id)
+        snippet = project.snippets.get(snippet_id, lazy=False)
+        
+        update_data = {}
+        if title is not None:
+            update_data["title"] = title
+        if file_name is not None:
+            update_data["file_name"] = file_name
+        if content is not None:
+            update_data["content"] = content
+        if description is not None:
+            update_data["description"] = description
+        if visibility is not None:
+            update_data["visibility"] = visibility
+            
+        if update_data:
+            for key, value in update_data.items():
+                setattr(snippet, key, value)
+            snippet.save()
+        
+        return self._snippet_to_dict(snippet)
+
+    @staticmethod
+    def _job_to_dict(job: Any) -> Dict[str, Any]:
+        """Convert job object to dictionary"""
+        return {
+            "id": getattr(job, "id", None),
+            "name": getattr(job, "name", None),
+            "stage": getattr(job, "stage", None),
+            "status": getattr(job, "status", None),
+            "created_at": getattr(job, "created_at", None),
+            "started_at": getattr(job, "started_at", None),
+            "finished_at": getattr(job, "finished_at", None),
+            "duration": getattr(job, "duration", None),
+            "user": getattr(job, "user", None),
+            "commit": getattr(job, "commit", None),
+            "pipeline": getattr(job, "pipeline", None),
+            "web_url": getattr(job, "web_url", None),
+            "artifacts": getattr(job, "artifacts", []),
+            "artifacts_expire_at": getattr(job, "artifacts_expire_at", None),
+            "tag_list": getattr(job, "tag_list", []),
+            "runner": getattr(job, "runner", None),
+        }
+
+    @retry_on_error()
+    def list_pipeline_jobs(
+        self,
+        project_id: str,
+        pipeline_id: int,
+        per_page: int = DEFAULT_PAGE_SIZE,
+        page: int = 1,
+    ) -> Dict[str, Any]:
+        """List jobs in a specific pipeline.
+        
+        Args:
+            project_id: The project ID or path
+            pipeline_id: The pipeline ID
+            per_page: Number of results per page
+            page: Page number
+            
+        Returns:
+            Dictionary with jobs list and pagination info
+        """
+        project = self.gl.projects.get(project_id)
+        pipeline = project.pipelines.get(pipeline_id)
+        
+        kwargs = {
+            "get_all": False,
+            "per_page": min(per_page, MAX_PAGE_SIZE),
+            "page": page,
+        }
+        
+        response = pipeline.jobs.list(**kwargs)
+        pagination = {
+            "page": page,
+            "per_page": per_page,
+            "total": getattr(response, "total", None),
+            "total_pages": getattr(response, "total_pages", None),
+            "next_page": getattr(response, "next_page", None),
+            "prev_page": getattr(response, "prev_page", None),
+        }
+        
+        return {
+            "jobs": [self._job_to_dict(j) for j in response],
+            "pagination": pagination,
+            "project_id": project_id,
+            "pipeline_id": pipeline_id,
+        }
+
+    @retry_on_error()
+    def download_job_artifact(
+        self,
+        project_id: str,
+        job_id: int,
+        artifact_path: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Download job artifacts.
+        
+        Args:
+            project_id: The project ID or path
+            job_id: The job ID
+            artifact_path: Optional specific artifact path to download
+            
+        Returns:
+            Dictionary with artifact information and download details
+        """
+        project = self.gl.projects.get(project_id)
+        job = project.jobs.get(job_id)
+        
+        # Get job artifacts info
+        artifacts_info = []
+        if hasattr(job, "artifacts") and job.artifacts:
+            for artifact in job.artifacts:
+                artifacts_info.append({
+                    "filename": getattr(artifact, "filename", None),
+                    "size": getattr(artifact, "size", None),
+                })
+        
+        # For security reasons, we don't actually download the artifact content
+        # but return information about available artifacts
+        result = {
+            "job_id": job_id,
+            "job_name": getattr(job, "name", None),
+            "project_id": project_id,
+            "artifacts": artifacts_info,
+            "artifacts_expire_at": getattr(job, "artifacts_expire_at", None),
+            "download_note": "Artifact content not downloaded for security reasons. Use GitLab web interface or CLI for actual downloads.",
+        }
+        
+        if artifact_path:
+            result["requested_path"] = artifact_path
+            
+        return result
+
+    @retry_on_error()
+    def list_project_jobs(
+        self,
+        project_id: str,
+        scope: Optional[str] = None,
+        per_page: int = DEFAULT_PAGE_SIZE,
+        page: int = 1,
+    ) -> Dict[str, Any]:
+        """List jobs for a project.
+        
+        Args:
+            project_id: The project ID or path
+            scope: Optional scope filter (created, pending, running, failed, success, canceled, skipped, waiting_for_resource, manual)
+            per_page: Number of results per page
+            page: Page number
+            
+        Returns:
+            Dictionary with jobs list and pagination info
+        """
+        project = self.gl.projects.get(project_id)
+        
+        kwargs = {
+            "get_all": False,
+            "per_page": min(per_page, MAX_PAGE_SIZE),
+            "page": page,
+        }
+        
+        if scope:
+            kwargs["scope"] = scope
+        
+        response = project.jobs.list(**kwargs)
+        pagination = {
+            "page": page,
+            "per_page": per_page,
+            "total": getattr(response, "total", None),
+            "total_pages": getattr(response, "total_pages", None),
+            "next_page": getattr(response, "next_page", None),
+            "prev_page": getattr(response, "prev_page", None),
+        }
+        
+        return {
+            "jobs": [self._job_to_dict(j) for j in response],
+            "pagination": pagination,
+            "project_id": project_id,
+            "scope": scope,
+        }
+
     @retry_on_error()
     def summarize_issue(self, project_id: str, issue_iid: int, max_length: int = 500) -> Dict[str, Any]:
         """Generate an AI-friendly summary of an issue.
