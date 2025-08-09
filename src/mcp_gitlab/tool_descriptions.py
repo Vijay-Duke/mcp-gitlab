@@ -1606,3 +1606,236 @@ Bug Investigation Workflow:
 4. gitlab_search_in_project - Search for related code
 5. gitlab_add_issue_comment - Update findings
 """
+
+# ============================================================================
+# SNIPPET PARAMETER DESCRIPTIONS
+# ============================================================================
+
+DESC_SNIPPET_ID = """Snippet ID
+Type: integer
+Format: Numeric snippet identifier
+Example: 123
+How to find: From snippet URL or API responses"""
+
+DESC_SNIPPET_TITLE = """Snippet title
+Type: string
+Format: Descriptive title for the snippet
+Example: 'Database migration script'
+Note: Required when creating snippets"""
+
+DESC_SNIPPET_FILE_NAME = """Snippet file name
+Type: string
+Format: File name with extension
+Example: 'migration.sql', 'helper.py', 'config.yaml'
+Note: Used for syntax highlighting and display"""
+
+DESC_SNIPPET_CONTENT = """Snippet content
+Type: string
+Format: Raw text content of the snippet
+Example: 'console.log(\"Hello World\");'
+Note: Can be code, text, or any content type"""
+
+DESC_SNIPPET_DESCRIPTION = """Snippet description
+Type: string
+Format: Optional description of the snippet
+Example: 'Helper script for database migrations'
+Note: Provides context about the snippet's purpose"""
+
+DESC_SNIPPET_VISIBILITY = """Snippet visibility
+Type: string
+Format: Visibility level for the snippet
+Options: 'private' | 'internal' | 'public'
+Default: 'private'
+Examples:
+  - 'private' (only visible to author)
+  - 'internal' (visible to authenticated users)
+  - 'public' (visible to everyone)"""
+
+# ============================================================================
+# SNIPPET TOOL DESCRIPTIONS
+# ============================================================================
+
+DESC_LIST_SNIPPETS = """List project snippets
+Returns: Array of snippets with metadata
+Use when: Browsing code snippets, finding reusable code
+Pagination: Yes (default 20 per page)
+Filtering: By project
+
+Example response:
+[{
+  "id": 123,
+  "title": "Database Helper",
+  "file_name": "db_helper.py",
+  "description": "Common database operations",
+  "visibility": "private",
+  "author": {"name": "John Doe"},
+  "created_at": "2023-01-01T00:00:00Z",
+  "web_url": "https://gitlab.com/group/project/snippets/123"
+}]
+
+Related tools:
+- gitlab_get_snippet: Get snippet content
+- gitlab_create_snippet: Create new snippet"""
+
+DESC_GET_SNIPPET = """Get snippet details and content
+Returns: Complete snippet information with content
+Use when: Reading snippet code, reviewing implementations
+Content: Full text content included
+
+Example response:
+{
+  "id": 123,
+  "title": "API Helper Functions",
+  "file_name": "api_helpers.js",
+  "content": "function fetchData(url) { ... }",
+  "description": "Common API utility functions",
+  "visibility": "internal",
+  "author": {"name": "Jane Smith"},
+  "created_at": "2023-01-01T00:00:00Z",
+  "web_url": "https://gitlab.com/group/project/snippets/123"
+}
+
+Related tools:
+- gitlab_list_snippets: Browse available snippets
+- gitlab_update_snippet: Modify snippet"""
+
+DESC_CREATE_SNIPPET = """Create a new code snippet
+Creates: New snippet with specified content and metadata
+Use when: Saving reusable code, sharing solutions, documenting examples
+Required: title, file_name, content
+Optional: description, visibility
+
+Example usage:
+{
+  "title": "Docker Compose Template",
+  "file_name": "docker-compose.yml",
+  "content": "version: '3.8'\\nservices:\\n  app:\\n    image: nginx",
+  "description": "Basic Docker Compose setup",
+  "visibility": "internal"
+}
+
+Returns: Created snippet with ID and URLs
+
+Related tools:
+- gitlab_update_snippet: Modify after creation
+- gitlab_list_snippets: View created snippets"""
+
+DESC_UPDATE_SNIPPET = """Update existing snippet
+Modifies: Title, content, file name, description, or visibility
+Use when: Fixing code, updating examples, changing permissions
+Flexibility: Update any combination of fields
+
+Example usage:
+{
+  "snippet_id": 123,
+  "title": "Updated API Helper",
+  "content": "// Updated with error handling\\nfunction fetchData(url) { ... }",
+  "description": "Enhanced with proper error handling"
+}
+
+Returns: Updated snippet information
+
+Related tools:
+- gitlab_get_snippet: View current content before updating
+- gitlab_create_snippet: Create new instead of updating
+
+# ============================================================================
+# JOB AND ARTIFACT PARAMETER DESCRIPTIONS
+# ============================================================================
+
+DESC_PIPELINE_ID = """Pipeline ID
+Type: integer
+Format: Numeric pipeline identifier
+Example: 12345
+How to find: From pipeline URLs or gitlab_list_pipelines response"""
+
+DESC_JOB_ID = """Job ID  
+Type: integer
+Format: Numeric job identifier
+Example: 67890
+How to find: From job URLs or gitlab_list_pipeline_jobs response"""
+
+DESC_ARTIFACT_PATH = """Artifact path
+Type: string
+Format: Path to specific artifact file within job artifacts
+Example: 'dist/bundle.js', 'reports/coverage.xml'
+Optional: If not specified, returns info about all artifacts"""
+
+DESC_JOB_SCOPE = """Job scope filter
+Type: string
+Format: Filter jobs by status
+Options: 'created' | 'pending' | 'running' | 'failed' | 'success' | 'canceled' | 'skipped' | 'waiting_for_resource' | 'manual'
+Examples:
+  - 'failed' (only failed jobs)
+  - 'success' (only successful jobs)
+  - 'running' (currently running jobs)"""
+
+# ============================================================================
+# JOB AND ARTIFACT TOOL DESCRIPTIONS
+# ============================================================================
+
+DESC_LIST_PIPELINE_JOBS = """List jobs in a specific pipeline
+Returns: Array of jobs with status, timing, and artifact information
+Use when: Debugging pipeline failures, checking job status, finding artifacts
+Pagination: Yes (default 20 per page)
+Details: Includes job stage, status, duration, runner info
+
+Example response:
+[{
+  "id": 12345,
+  "name": "test:unit",
+  "stage": "test", 
+  "status": "success",
+  "created_at": "2023-01-01T10:00:00Z",
+  "duration": 120.5,
+  "artifacts": [{"filename": "coverage.xml"}],
+  "web_url": "https://gitlab.com/group/project/-/jobs/12345"
+}]
+
+Related tools:
+- gitlab_list_pipelines: Find pipeline IDs
+- gitlab_download_job_artifact: Get job artifacts"""
+
+DESC_DOWNLOAD_JOB_ARTIFACT = """Get information about job artifacts
+Returns: Artifact metadata and download information
+Use when: Checking build outputs, downloading test results, accessing reports
+Security: Returns artifact info only (no actual file download for security)
+Content: Lists available artifacts with sizes and expiration
+
+Example response:
+{
+  "job_id": 12345,
+  "job_name": "build:production",
+  "artifacts": [
+    {"filename": "dist.zip", "size": 1024000},
+    {"filename": "reports/junit.xml", "size": 5120}
+  ],
+  "artifacts_expire_at": "2023-02-01T00:00:00Z",
+  "download_note": "Use GitLab web interface or CLI for actual downloads"
+}
+
+Related tools:
+- gitlab_list_pipeline_jobs: Find job IDs with artifacts
+- gitlab_list_project_jobs: Browse all project jobs"""
+
+DESC_LIST_PROJECT_JOBS = """List all jobs for a project
+Returns: Array of jobs across all pipelines with filtering options
+Use when: Monitoring project CI/CD, finding recent failures, browsing job history
+Pagination: Yes (default 20 per page)
+Filtering: By job status/scope (failed, success, running, etc.)
+
+Example response:
+[{
+  "id": 67890,
+  "name": "deploy:staging",
+  "stage": "deploy",
+  "status": "failed", 
+  "pipeline": {"id": 123, "ref": "main"},
+  "commit": {"short_id": "abc1234"},
+  "created_at": "2023-01-01T15:30:00Z",
+  "user": {"name": "Jane Doe"}
+}]
+
+Related tools:
+- gitlab_list_pipeline_jobs: Jobs for specific pipeline
+- gitlab_list_pipelines: Find pipeline information""""""
