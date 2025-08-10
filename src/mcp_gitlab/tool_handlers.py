@@ -8,16 +8,30 @@ from typing import Any, Dict, Optional, List
 from mcp_gitlab.gitlab_client import GitLabClient
 from mcp_gitlab.constants import (
     DEFAULT_PAGE_SIZE, SMALL_PAGE_SIZE, DEFAULT_MAX_BODY_LENGTH,
-    ERROR_NO_PROJECT, TOOL_LIST_PROJECTS, TOOL_GET_PROJECT,
-    TOOL_GET_CURRENT_PROJECT, TOOL_LIST_ISSUES, TOOL_LIST_MRS,
-    TOOL_GET_MR_NOTES, TOOL_LIST_BRANCHES, TOOL_LIST_PIPELINES,
-    TOOL_LIST_USER_EVENTS, TOOL_LIST_COMMITS,
-    TOOL_LIST_REPOSITORY_TREE, TOOL_LIST_TAGS, TOOL_LIST_RELEASES,
-    TOOL_LIST_PROJECT_MEMBERS, TOOL_LIST_PROJECT_HOOKS,
-    TOOL_GET_CURRENT_USER, TOOL_GET_USER,
-    TOOL_LIST_GROUPS, TOOL_GET_GROUP, TOOL_LIST_GROUP_PROJECTS,
-    TOOL_LIST_SNIPPETS, TOOL_GET_SNIPPET, TOOL_CREATE_SNIPPET, TOOL_UPDATE_SNIPPET,
-    TOOL_LIST_PIPELINE_JOBS, TOOL_DOWNLOAD_JOB_ARTIFACT, TOOL_LIST_PROJECT_JOBS
+    ERROR_NO_PROJECT,
+    # List tools
+    TOOL_LIST_PROJECTS, TOOL_LIST_ISSUES, TOOL_LIST_MRS,
+    TOOL_LIST_BRANCHES, TOOL_LIST_PIPELINES, TOOL_LIST_USER_EVENTS,
+    TOOL_LIST_COMMITS, TOOL_LIST_REPOSITORY_TREE, TOOL_LIST_TAGS,
+    TOOL_LIST_RELEASES, TOOL_LIST_PROJECT_MEMBERS, TOOL_LIST_PROJECT_HOOKS,
+    TOOL_LIST_GROUPS, TOOL_LIST_GROUP_PROJECTS, TOOL_LIST_SNIPPETS,
+    TOOL_LIST_PIPELINE_JOBS, TOOL_LIST_PROJECT_JOBS,
+    # Get tools
+    TOOL_GET_PROJECT, TOOL_GET_CURRENT_PROJECT, TOOL_GET_MR_NOTES,
+    TOOL_GET_CURRENT_USER, TOOL_GET_USER, TOOL_GET_GROUP, TOOL_GET_SNIPPET,
+    TOOL_DOWNLOAD_JOB_ARTIFACT, TOOL_GET_ISSUE, TOOL_GET_MERGE_REQUEST,
+    TOOL_GET_FILE_CONTENT, TOOL_GET_COMMIT, TOOL_GET_COMMIT_DIFF,
+    TOOL_GET_MR_APPROVALS, TOOL_GET_MR_DISCUSSIONS, TOOL_GET_MR_CHANGES,
+    # Action tools
+    TOOL_CREATE_SNIPPET, TOOL_UPDATE_SNIPPET, TOOL_UPDATE_MR, TOOL_CLOSE_MR,
+    TOOL_MERGE_MR, TOOL_REBASE_MR, TOOL_APPROVE_MR, TOOL_ADD_ISSUE_COMMENT,
+    TOOL_ADD_MR_COMMENT, TOOL_RESOLVE_DISCUSSION, TOOL_CREATE_COMMIT,
+    TOOL_CHERRY_PICK_COMMIT, TOOL_COMPARE_REFS,
+    # Search tools
+    TOOL_SEARCH_PROJECTS, TOOL_SEARCH_IN_PROJECT,
+    # AI and Advanced Tools
+    TOOL_SUMMARIZE_MR, TOOL_SUMMARIZE_ISSUE, TOOL_SUMMARIZE_PIPELINE,
+    TOOL_SMART_DIFF, TOOL_SAFE_PREVIEW_COMMIT, TOOL_BATCH_OPERATIONS,
 )
 
 logger = logging.getLogger(__name__)
@@ -631,85 +645,67 @@ def handle_list_project_jobs(client: GitLabClient, arguments: Optional[Dict[str,
 
 # Tool handler mapping
 TOOL_HANDLERS = {
+    # List tools
     TOOL_LIST_PROJECTS: handle_list_projects,
-    TOOL_GET_PROJECT: handle_get_project,
-    TOOL_GET_CURRENT_PROJECT: handle_get_current_project,
-    TOOL_GET_CURRENT_USER: handle_get_current_user,
-    TOOL_GET_USER: handle_get_user,
     TOOL_LIST_ISSUES: handle_list_issues,
-    "gitlab_get_issue": handle_get_issue,
     TOOL_LIST_MRS: handle_list_merge_requests,
-    "gitlab_get_merge_request": handle_get_merge_request,
-    TOOL_GET_MR_NOTES: handle_get_merge_request_notes,
-    "gitlab_get_file_content": handle_get_file_content,
-    TOOL_LIST_REPOSITORY_TREE: handle_get_repository_tree,
-    TOOL_LIST_COMMITS: handle_get_commits,  # Same handler, new name
-    "gitlab_get_commit": handle_get_commit,
-    "gitlab_get_commit_diff": handle_get_commit_diff,
-    "gitlab_search_projects": handle_search_projects,
-    "gitlab_search_in_project": handle_search_in_project,
     TOOL_LIST_BRANCHES: handle_list_branches,
     TOOL_LIST_PIPELINES: handle_list_pipelines,
     TOOL_LIST_USER_EVENTS: handle_get_user_events,
-    
-    # MR lifecycle handlers
-    "gitlab_update_merge_request": handle_update_merge_request,
-    "gitlab_close_merge_request": handle_close_merge_request,
-    "gitlab_merge_merge_request": handle_merge_merge_request,
-    
-    # Comment handlers
-    "gitlab_add_issue_comment": handle_add_issue_comment,
-    "gitlab_add_merge_request_comment": handle_add_merge_request_comment,
-    
-    # Approval handlers
-    "gitlab_approve_merge_request": handle_approve_merge_request,
-    "gitlab_get_merge_request_approvals": handle_get_merge_request_approvals,
-    
-    # Repository handlers
-    TOOL_LIST_TAGS: handle_get_tags,  # Same handler, new name
-    "gitlab_create_commit": handle_create_commit,
-    "gitlab_compare_refs": handle_compare_refs,
-    
-    # Release and member handlers
-    "gitlab_list_releases": handle_list_releases,
-    TOOL_LIST_RELEASES: handle_list_releases,  # Same handler, new name
-    TOOL_LIST_PROJECT_MEMBERS: handle_get_project_members,  # Same handler, new name
-    TOOL_LIST_PROJECT_HOOKS: handle_get_project_hooks,  # Same handler, new name
-    
-    # MR advanced handlers
-    "gitlab_get_merge_request_discussions": handle_get_merge_request_discussions,
-    "gitlab_resolve_discussion": handle_resolve_discussion,
-    "gitlab_get_merge_request_changes": handle_get_merge_request_changes,
-    
-    # MR operations handlers
-    "gitlab_rebase_merge_request": handle_rebase_merge_request,
-    "gitlab_cherry_pick_commit": handle_cherry_pick_commit,
-    
-    # AI helper handlers
-    "gitlab_summarize_merge_request": handle_summarize_merge_request,
-    "gitlab_summarize_issue": handle_summarize_issue,
-    "gitlab_summarize_pipeline": handle_summarize_pipeline,
-    
-    # Advanced diff handlers
-    "gitlab_smart_diff": handle_smart_diff,
-    "gitlab_safe_preview_commit": handle_safe_preview_commit,
-    
-    # Batch operations handler
-    "gitlab_batch_operations": handle_batch_operations,
-    
-    # Group handlers
+    TOOL_LIST_COMMITS: handle_get_commits,
+    TOOL_LIST_REPOSITORY_TREE: handle_get_repository_tree,
+    TOOL_LIST_TAGS: handle_get_tags,
+    TOOL_LIST_RELEASES: handle_list_releases,
+    TOOL_LIST_PROJECT_MEMBERS: handle_get_project_members,
+    TOOL_LIST_PROJECT_HOOKS: handle_get_project_hooks,
     TOOL_LIST_GROUPS: handle_list_groups,
-    TOOL_GET_GROUP: handle_get_group,
     TOOL_LIST_GROUP_PROJECTS: handle_list_group_projects,
-    
-    # Snippets handlers
     TOOL_LIST_SNIPPETS: handle_list_snippets,
+    TOOL_LIST_PIPELINE_JOBS: handle_list_pipeline_jobs,
+    TOOL_LIST_PROJECT_JOBS: handle_list_project_jobs,
+
+    # Get tools
+    TOOL_GET_PROJECT: handle_get_project,
+    TOOL_GET_CURRENT_PROJECT: handle_get_current_project,
+    TOOL_GET_MR_NOTES: handle_get_merge_request_notes,
+    TOOL_GET_CURRENT_USER: handle_get_current_user,
+    TOOL_GET_USER: handle_get_user,
+    TOOL_GET_GROUP: handle_get_group,
     TOOL_GET_SNIPPET: handle_get_snippet,
+    TOOL_DOWNLOAD_JOB_ARTIFACT: handle_download_job_artifact,
+    TOOL_GET_ISSUE: handle_get_issue,
+    TOOL_GET_MERGE_REQUEST: handle_get_merge_request,
+    TOOL_GET_FILE_CONTENT: handle_get_file_content,
+    TOOL_GET_COMMIT: handle_get_commit,
+    TOOL_GET_COMMIT_DIFF: handle_get_commit_diff,
+    TOOL_GET_MR_APPROVALS: handle_get_merge_request_approvals,
+    TOOL_GET_MR_DISCUSSIONS: handle_get_merge_request_discussions,
+    TOOL_GET_MR_CHANGES: handle_get_merge_request_changes,
+
+    # Action tools
     TOOL_CREATE_SNIPPET: handle_create_snippet,
     TOOL_UPDATE_SNIPPET: handle_update_snippet,
-    
-    # Job and Artifact handlers
-    TOOL_LIST_PIPELINE_JOBS: handle_list_pipeline_jobs,
-    TOOL_DOWNLOAD_JOB_ARTIFACT: handle_download_job_artifact,
-    TOOL_LIST_PROJECT_JOBS: handle_list_project_jobs,
+    TOOL_UPDATE_MR: handle_update_merge_request,
+    TOOL_CLOSE_MR: handle_close_merge_request,
+    TOOL_MERGE_MR: handle_merge_merge_request,
+    TOOL_REBASE_MR: handle_rebase_merge_request,
+    TOOL_APPROVE_MR: handle_approve_merge_request,
+    TOOL_ADD_ISSUE_COMMENT: handle_add_issue_comment,
+    TOOL_ADD_MR_COMMENT: handle_add_merge_request_comment,
+    TOOL_RESOLVE_DISCUSSION: handle_resolve_discussion,
+    TOOL_CREATE_COMMIT: handle_create_commit,
+    TOOL_CHERRY_PICK_COMMIT: handle_cherry_pick_commit,
+    TOOL_COMPARE_REFS: handle_compare_refs,
+
+    # Search tools
+    TOOL_SEARCH_PROJECTS: handle_search_projects,
+    TOOL_SEARCH_IN_PROJECT: handle_search_in_project,
+
+    # AI and Advanced Tools
+    TOOL_SUMMARIZE_MR: handle_summarize_merge_request,
+    TOOL_SUMMARIZE_ISSUE: handle_summarize_issue,
+    TOOL_SUMMARIZE_PIPELINE: handle_summarize_pipeline,
+    TOOL_SMART_DIFF: handle_smart_diff,
+    TOOL_SAFE_PREVIEW_COMMIT: handle_safe_preview_commit,
+    TOOL_BATCH_OPERATIONS: handle_batch_operations,
 }

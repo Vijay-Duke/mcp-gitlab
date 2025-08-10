@@ -19,26 +19,10 @@ class TestToolRegistration:
     
     @pytest.fixture
     def server_tools(self) -> Set[str]:
-        """Extract all tools registered in server.py"""
-        server_path = src_path / "mcp_gitlab" / "server.py"
-        with open(server_path, 'r') as f:
-            content = f.read()
-        
-        # Find all tool names (both string literals and constants)
-        tools = set()
-        
-        # Find string literals
-        for match in re.findall(r'name="(gitlab_[^"]+)"', content):
-            tools.add(match)
-        
-        # Find constant usage
-        for attr_name in dir(constants):
-            if attr_name.startswith('TOOL_'):
-                const_value = getattr(constants, attr_name)
-                if f'name={attr_name}' in content:
-                    tools.add(const_value)
-        
-        return tools
+        """Extract all tools registered in tool_definitions.py"""
+        # Import the TOOLS list directly from the source file
+        from mcp_gitlab.tool_definitions import TOOLS
+        return {tool.name for tool in TOOLS}
     
     @pytest.fixture
     def handler_tools(self) -> Set[str]:
