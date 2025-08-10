@@ -330,4 +330,3 @@ TOOL_NOTIFY_OWNERS_ON_DIRECTORY_CHANGES = "gitlab_notify_owners_on_directory_cha
 # Governance & Compliance tools
 TOOL_MR_TEMPLATE_ENFORCER = "gitlab_mr_template_enforcer"
 TOOL_LICENCE_COMPLIANCE_AUDIT = "gitlab_licence_compliance_audit"
->>>>>>> 523628d (feat: Add 18 new GitLab MCP tools across 4 user-focused categories)

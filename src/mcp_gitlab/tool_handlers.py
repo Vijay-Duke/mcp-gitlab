@@ -41,7 +41,6 @@ from mcp_gitlab.constants import (
     TOOL_GET_USER_CODE_CHANGES_SUMMARY, TOOL_GET_USER_SNIPPETS,
     TOOL_GET_USER_ISSUE_COMMENTS, TOOL_GET_USER_MR_COMMENTS,
     TOOL_GET_USER_DISCUSSION_THREADS, TOOL_GET_USER_RESOLVED_THREADS
->>>>>>> 523628d (feat: Add 18 new GitLab MCP tools across 4 user-focused categories)
 )
 
 logger = logging.getLogger(__name__)
