@@ -1989,3 +1989,665 @@ Example response:
 Related tools:
 - gitlab_list_pipeline_jobs: Jobs for specific pipeline
 - gitlab_list_pipelines: Find pipeline information"""
+
+# ============================================================================
+# USER & PROFILE TOOL DESCRIPTIONS
+# ============================================================================
+
+DESC_SEARCH_USER = """Search for GitLab users by name, username, or email
+
+Find users across GitLab instance using flexible search terms.
+
+Returns user information including:
+- Basic details: ID, username, name, avatar
+- Public profile information
+- Activity status
+
+Use cases:
+- Find team members for assignments
+- Look up users for collaboration
+- Discover users in organization
+- Validate usernames before mentions
+
+Parameters:
+- search: Search query (name, username, or email fragment)
+- per_page: Number of results per page (default: 20)
+- page: Page number for pagination (default: 1)
+
+Example: Find users named "John"
+```
+{
+  "search": "John",
+  "per_page": 10
+}
+```"""
+
+DESC_GET_USER_DETAILS = """Get comprehensive user profile and metadata
+
+Retrieve detailed information about a specific user including contributions, 
+activity patterns, and public profile data.
+
+Returns extended user information:
+- Profile: name, bio, location, company
+- Statistics: public projects, contribution stats
+- Activity: last sign-in, creation date
+- Settings: timezone, preferred language
+- Social: website, LinkedIn, Twitter links
+
+Use cases:
+- Review team member profiles
+- Gather user context for collaboration
+- Audit user activity and contributions
+- Display rich user information in tools
+
+Parameters:
+- user_id: Numeric user ID
+- username: Username string (use either user_id or username)
+
+Example: Get user details by username
+```
+{
+  "username": "johndoe"
+}
+```"""
+
+DESC_GET_MY_PROFILE = """Get the current authenticated user's complete profile
+
+Retrieve your own comprehensive profile information including private settings
+and detailed statistics not available via public user APIs.
+
+Returns complete profile including:
+- Personal info: email, name, bio, location
+- Account settings: notifications, preferences
+- Statistics: private/public project counts
+- Security: 2FA status, SSH keys count
+- Activity: recent contributions, sign-in history
+
+Use cases:
+- Display user dashboard information
+- Verify account settings and security
+- Show personalized statistics
+- Export profile data
+
+No parameters required - uses authentication token.
+
+Example usage:
+```
+{}
+```"""
+
+DESC_GET_USER_CONTRIBUTIONS_SUMMARY = """Summarize user's recent contributions across issues, MRs, and commits
+
+Get a comprehensive overview of a user's activity and contributions over a 
+specified time period, aggregating data from multiple sources.
+
+Returns contribution summary including:
+- Commit statistics: count, additions, deletions
+- Issue activity: created, closed, commented
+- MR activity: created, merged, reviewed
+- Project involvement: active repositories
+- Trend analysis: activity patterns over time
+
+Use cases:
+- Performance reviews and reports
+- Team contribution tracking
+- Identifying active contributors
+- Project health monitoring
+
+Parameters:
+- user_id: Numeric user ID  
+- username: Username string (use either user_id or username)
+- since: Start date for analysis (YYYY-MM-DD)
+- until: End date for analysis (YYYY-MM-DD)
+- project_id: Optional project scope filter
+
+Example: Get user contributions for last month
+```
+{
+  "username": "johndoe",
+  "since": "2024-01-01",
+  "until": "2024-01-31"
+}
+```"""
+
+DESC_GET_USER_ACTIVITY_FEED = """Retrieve user's complete activity/events timeline
+
+Get chronological feed of all user activities including commits, issues,
+MRs, comments, and other interactions across all accessible projects.
+
+Returns activity timeline with:
+- Event details: type, target, description
+- Timestamps: creation and update times  
+- Project context: where activity occurred
+- Related objects: linked issues, MRs, commits
+- Action metadata: push details, comment excerpts
+
+Use cases:
+- Track user engagement patterns
+- Monitor team member activities
+- Generate activity reports
+- Debug user workflow issues
+
+Parameters:
+- user_id: Numeric user ID
+- username: Username string (use either user_id or username)  
+- action: Filter by action type (created, updated, closed, merged, etc.)
+- target_type: Filter by target (Issue, MergeRequest, Project, etc.)
+- after: Events after this date (YYYY-MM-DD)
+- before: Events before this date (YYYY-MM-DD)
+- per_page: Results per page (default: 20)
+- page: Page number (default: 1)
+
+Example: Get recent issue activities
+```
+{
+  "username": "johndoe", 
+  "target_type": "Issue",
+  "after": "2024-01-01"
+}
+```"""
+
+# ============================================================================
+# USER'S ISSUES & MRS TOOL DESCRIPTIONS  
+# ============================================================================
+
+DESC_GET_USER_OPEN_MRS = """Get all open merge requests authored by a user
+
+Retrieve all currently open MRs created by the specified user across
+all accessible projects, with priority and urgency indicators.
+
+Returns MR information including:
+- Basic details: title, description, IID
+- Status: draft, conflicts, approvals needed
+- Urgency indicators: age, reviewer assignments
+- CI status: pipeline state, test results
+- Project context: name, namespace
+
+Use cases:
+- Personal MR dashboard
+- Team workload monitoring  
+- Code review queue management
+- Sprint planning and tracking
+
+Parameters:
+- user_id: Numeric user ID
+- username: Username string (use either user_id or username)
+- sort: Sort order (updated, created, priority)
+- per_page: Results per page (default: 20)
+- page: Page number (default: 1)
+
+Example: Get user's open MRs sorted by update time
+```
+{
+  "username": "johndoe",
+  "sort": "updated",
+  "per_page": 10  
+}
+```"""
+
+DESC_GET_USER_REVIEW_REQUESTS = """Get MRs where user is assigned as reviewer with pending action
+
+Find all merge requests where the specified user has been assigned as a 
+reviewer and their review/approval is still pending.
+
+Returns pending review requests with:
+- MR details: title, author, description
+- Review status: approvals, pending reviewers
+- Priority indicators: age, CI status, conflicts
+- Action items: what review is needed
+- Project context: urgency, team notifications
+
+Use cases:
+- Personal review queue/inbox
+- Team code review management
+- Review workload balancing
+- SLA compliance monitoring
+
+Parameters:
+- user_id: Numeric user ID
+- username: Username string (use either user_id or username)
+- priority: Filter by priority (high, medium, low)
+- sort: Sort order (urgency, age, project)
+- per_page: Results per page (default: 20)
+- page: Page number (default: 1)
+
+Example: Get high priority review requests
+```
+{
+  "username": "johndoe",
+  "priority": "high",
+  "sort": "urgency"
+}
+```"""
+
+DESC_GET_USER_OPEN_ISSUES = """Get open issues assigned to a user, prioritized by severity/SLA
+
+Retrieve all currently open issues assigned to the specified user across
+all accessible projects, with intelligent priority sorting.
+
+Returns prioritized issue list with:
+- Issue details: title, description, labels
+- Priority indicators: severity, SLA status
+- Context: project, milestone, due date
+- Activity: recent updates, comment count
+- Assignment: other assignees, collaboration info
+
+Use cases:
+- Personal issue dashboard and inbox
+- Workload management and planning
+- SLA compliance tracking
+- Sprint and milestone planning
+
+Parameters:
+- user_id: Numeric user ID  
+- username: Username string (use either user_id or username)
+- severity: Filter by severity level
+- sla_status: Filter by SLA compliance (at_risk, overdue, ok)
+- sort: Sort order (priority, due_date, updated)
+- per_page: Results per page (default: 20)
+- page: Page number (default: 1)
+
+Example: Get overdue issues for user
+```
+{
+  "username": "johndoe",
+  "sla_status": "overdue",
+  "sort": "priority"
+}
+```"""
+
+DESC_GET_USER_REPORTED_ISSUES = """Get issues reported/created by a user
+
+Find all issues originally created by the specified user across all
+accessible projects, with current status and resolution tracking.
+
+Returns reported issues with:
+- Issue details: title, description, current state
+- Progress tracking: assignees, resolution status
+- Timeline: creation, updates, resolution dates
+- Engagement: comments, watchers, related issues
+- Project context: where issue was reported
+
+Use cases:
+- Track personal issue reporting patterns
+- Follow up on submitted problems
+- Monitor issue resolution progress
+- Generate user engagement reports
+
+Parameters:
+- user_id: Numeric user ID
+- username: Username string (use either user_id or username)
+- state: Filter by state (opened, closed, all)
+- since: Issues created after date (YYYY-MM-DD) 
+- until: Issues created before date (YYYY-MM-DD)
+- sort: Sort order (created, updated, closed)
+- per_page: Results per page (default: 20)
+- page: Page number (default: 1)
+
+Example: Get recently reported issues
+```
+{
+  "username": "johndoe",
+  "state": "opened",
+  "since": "2024-01-01",
+  "sort": "created"
+}
+```"""
+
+DESC_GET_USER_RESOLVED_ISSUES = """Get issues closed/resolved by a user
+
+Find all issues that were closed or resolved by the specified user,
+showing their problem-solving contributions and impact.
+
+Returns resolved issues with:
+- Issue details: original problem, resolution
+- Resolution info: how it was closed, related MRs
+- Timeline: resolution time, effort indicators  
+- Impact: complexity, stakeholders affected
+- Recognition: contribution to project health
+
+Use cases:
+- Track problem resolution contributions
+- Performance reviews and recognition
+- Knowledge base building
+- Team productivity analysis
+
+Parameters:
+- user_id: Numeric user ID
+- username: Username string (use either user_id or username) 
+- since: Resolved after date (YYYY-MM-DD)
+- until: Resolved before date (YYYY-MM-DD)
+- complexity: Filter by resolution complexity
+- sort: Sort order (closed, complexity, impact)
+- per_page: Results per page (default: 20) 
+- page: Page number (default: 1)
+
+Example: Get issues resolved this quarter
+```
+{
+  "username": "johndoe",
+  "since": "2024-01-01",
+  "until": "2024-03-31",
+  "sort": "closed"
+}
+```"""
+
+# ============================================================================
+# USER'S CODE & COMMITS TOOL DESCRIPTIONS
+# ============================================================================
+
+DESC_GET_USER_COMMITS = """Get commits authored by a user within date range or branch
+
+Retrieve all commits authored by the specified user with flexible filtering
+by time period, branch, or project scope.
+
+Returns commit information with:
+- Commit details: SHA, message, timestamp
+- Code changes: files modified, additions, deletions
+- Context: branch, project, merge request associations
+- Author info: email, committer details
+- Statistics: impact, complexity metrics
+
+Use cases:
+- Code contribution tracking
+- Development velocity analysis  
+- Code review preparation
+- Performance evaluations
+
+Parameters:
+- user_id: Numeric user ID
+- username: Username string (use either user_id or username)
+- project_id: Optional project scope filter
+- branch: Filter by specific branch
+- since: Commits after date (YYYY-MM-DD)
+- until: Commits before date (YYYY-MM-DD)
+- include_stats: Include file change statistics
+- per_page: Results per page (default: 20)
+- page: Page number (default: 1)
+
+Example: Get user commits from main branch last month
+```
+{
+  "username": "johndoe", 
+  "branch": "main",
+  "since": "2024-01-01",
+  "until": "2024-01-31",
+  "include_stats": true
+}
+```"""
+
+DESC_GET_USER_MERGE_COMMITS = """Get commits from merge requests authored by a user
+
+Find all commits that originated from merge requests created by the 
+specified user, tracking their integrated contributions.
+
+Returns merge-related commits with:
+- Commit details: SHA, message, merge info
+- MR context: original MR, review process
+- Integration info: target branch, merge strategy  
+- Quality metrics: review feedback, CI results
+- Timeline: development to integration time
+
+Use cases:
+- Track integrated contributions
+- Measure code review effectiveness
+- Analyze development workflows
+- Quality assurance reporting
+
+Parameters:
+- user_id: Numeric user ID
+- username: Username string (use either user_id or username)
+- project_id: Optional project scope filter
+- target_branch: Filter by target branch (e.g., main)
+- since: MRs merged after date (YYYY-MM-DD)
+- until: MRs merged before date (YYYY-MM-DD) 
+- include_review_metrics: Include review statistics
+- per_page: Results per page (default: 20)
+- page: Page number (default: 1)
+
+Example: Get merged contributions to main branch
+```
+{
+  "username": "johndoe",
+  "target_branch": "main", 
+  "since": "2024-01-01",
+  "include_review_metrics": true
+}
+```"""
+
+DESC_GET_USER_CODE_CHANGES_SUMMARY = """Get lines added/removed and files changed by user over period
+
+Generate comprehensive statistics about a user's code contributions
+including quantitative metrics and impact analysis.
+
+Returns code change summary with:
+- Volume metrics: lines added, removed, net change
+- File statistics: files created, modified, deleted
+- Language breakdown: contributions by file type
+- Project distribution: changes across repositories
+- Trend analysis: velocity over time periods
+
+Use cases:
+- Development productivity analysis
+- Code contribution reporting
+- Team capacity planning
+- Performance review data
+
+Parameters:
+- user_id: Numeric user ID  
+- username: Username string (use either user_id or username)
+- project_id: Optional project scope filter
+- since: Analysis period start (YYYY-MM-DD)
+- until: Analysis period end (YYYY-MM-DD)
+- include_languages: Break down by programming language
+- include_trends: Include time-series trend data
+- granularity: Data granularity (daily, weekly, monthly)
+
+Example: Get quarterly code change summary
+```
+{
+  "username": "johndoe",
+  "since": "2024-01-01", 
+  "until": "2024-03-31",
+  "include_languages": true,
+  "granularity": "weekly"
+}
+```"""
+
+DESC_GET_USER_SNIPPETS = """List all personal and project snippets created by a user
+
+Find all code snippets created by the specified user across personal
+and project scopes, with content and metadata.
+
+Returns snippet information with:
+- Snippet details: title, description, visibility
+- Content info: file names, language detection
+- Usage context: project association, sharing scope
+- Metadata: creation date, update history
+- Access info: permissions, visibility settings
+
+Use cases:
+- Personal code library management
+- Knowledge sharing and documentation
+- Code reuse and template management  
+- Developer portfolio and examples
+
+Parameters:
+- user_id: Numeric user ID
+- username: Username string (use either user_id or username)
+- scope: Snippet scope (personal, project, all)
+- visibility: Filter by visibility (private, internal, public)
+- language: Filter by programming language
+- sort: Sort order (created, updated, name)
+- per_page: Results per page (default: 20)
+- page: Page number (default: 1)
+
+Example: Get user's public snippets
+```
+{
+  "username": "johndoe",
+  "visibility": "public", 
+  "sort": "created"
+}
+```"""
+
+# ============================================================================
+# USER'S COMMENTS & DISCUSSIONS TOOL DESCRIPTIONS
+# ============================================================================
+
+DESC_GET_USER_ISSUE_COMMENTS = """Get all comments authored by a user on issues
+
+Retrieve all issue comments and notes created by the specified user
+across all accessible projects and time periods.
+
+Returns comment information with:
+- Comment details: content, timestamp, issue context
+- Issue info: title, state, project association
+- Interaction metrics: replies, reactions, mentions
+- Context: thread position, related discussions
+- Impact: influence on issue resolution
+
+Use cases:
+- Track user engagement in discussions
+- Monitor communication patterns
+- Analyze collaboration effectiveness
+- Generate participation reports
+
+Parameters:
+- user_id: Numeric user ID
+- username: Username string (use either user_id or username)
+- project_id: Optional project scope filter
+- since: Comments after date (YYYY-MM-DD)
+- until: Comments before date (YYYY-MM-DD)
+- issue_state: Filter by issue state (opened, closed, all)
+- sort: Sort order (created, updated, project)
+- per_page: Results per page (default: 20)
+- page: Page number (default: 1)
+
+Example: Get recent issue comments
+```
+{
+  "username": "johndoe",
+  "since": "2024-01-01",
+  "sort": "created"
+}
+```"""
+
+DESC_GET_USER_MR_COMMENTS = """Get all comments authored by a user on merge requests
+
+Find all merge request comments and review feedback provided by the
+specified user, including code review discussions.
+
+Returns MR comment information with:
+- Comment details: content, type (review/discussion)
+- MR context: title, state, author, project
+- Review info: approval status, code line references
+- Thread info: discussion flow, resolution status
+- Impact: influence on code quality and decisions
+
+Use cases:
+- Code review participation tracking
+- Quality assurance monitoring
+- Mentoring and feedback analysis
+- Team collaboration assessment
+
+Parameters:
+- user_id: Numeric user ID
+- username: Username string (use either user_id or username)
+- project_id: Optional project scope filter
+- comment_type: Filter by type (review, discussion, all)
+- since: Comments after date (YYYY-MM-DD)
+- until: Comments before date (YYYY-MM-DD)
+- mr_state: Filter by MR state (opened, merged, closed, all)
+- sort: Sort order (created, updated, project)
+- per_page: Results per page (default: 20)
+- page: Page number (default: 1)
+
+Example: Get code review comments from last month
+```
+{
+  "username": "johndoe",
+  "comment_type": "review",
+  "since": "2024-01-01",
+  "until": "2024-01-31"
+}
+```"""
+
+DESC_GET_USER_DISCUSSION_THREADS = """Get all discussion threads started by a user
+
+Find all discussion threads initiated by the specified user across
+issues, merge requests, and other collaborative contexts.
+
+Returns discussion thread information with:
+- Thread details: initial message, topic, context
+- Engagement: replies, participants, resolution
+- Origin: issue/MR association, project context  
+- Timeline: creation, activity, resolution dates
+- Impact: influence on decisions and outcomes
+
+Use cases:
+- Leadership and initiative tracking
+- Communication effectiveness analysis
+- Knowledge sharing assessment
+- Team collaboration insights
+
+Parameters:
+- user_id: Numeric user ID
+- username: Username string (use either user_id or username)
+- project_id: Optional project scope filter
+- context_type: Filter by context (Issue, MergeRequest, all)
+- status: Filter by resolution status (active, resolved, all)
+- since: Threads started after date (YYYY-MM-DD)
+- until: Threads started before date (YYYY-MM-DD)
+- sort: Sort order (created, activity, resolution)
+- per_page: Results per page (default: 20)
+- page: Page number (default: 1)
+
+Example: Get active discussion threads
+```
+{
+  "username": "johndoe",
+  "status": "active",
+  "sort": "activity"
+}
+```"""
+
+DESC_GET_USER_RESOLVED_THREADS = """Get threads resolved by a user in reviews
+
+Find all discussion threads that were resolved by the specified user
+during code reviews and collaborative processes.
+
+Returns resolved thread information with:
+- Thread details: original discussion, resolution
+- Resolution info: how thread was closed, outcome
+- Context: code changes, review process, participants
+- Timeline: discussion duration, resolution time
+- Impact: contribution to code quality and decisions
+
+Use cases:
+- Code review effectiveness tracking
+- Collaboration quality assessment  
+- Mentoring and guidance evaluation
+- Team productivity insights
+
+Parameters:
+- user_id: Numeric user ID
+- username: Username string (use either user_id or username)
+- project_id: Optional project scope filter
+- resolution_type: How thread was resolved
+- since: Resolved after date (YYYY-MM-DD) 
+- until: Resolved before date (YYYY-MM-DD)
+- context_type: Filter by context (MergeRequest, Issue, all)
+- sort: Sort order (resolved, created, impact)
+- per_page: Results per page (default: 20)
+- page: Page number (default: 1)
+
+Example: Get threads resolved in code reviews
+```
+{
+  "username": "johndoe",
+  "context_type": "MergeRequest",
+  "since": "2024-01-01",
+  "sort": "resolved"
+}
+```"""

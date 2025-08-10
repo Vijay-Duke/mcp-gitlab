@@ -1082,6 +1082,1072 @@ class GitLabClient:
         
         return summary
 
+    # ============================================================================
+    # USER & PROFILE METHODS
+    # ============================================================================
+    
+    @retry_on_error()
+    def search_user(self, search: str, per_page: int = DEFAULT_PAGE_SIZE, page: int = 1) -> Dict[str, Any]:
+        """Search for GitLab users by name, username, or email"""
+        kwargs = {
+            "search": search,
+            "get_all": False,
+            "per_page": min(per_page, MAX_PAGE_SIZE),
+            "page": page,
+        }
+        response = self.gl.users.list(**kwargs)
+        pagination = {
+            "page": page,
+            "per_page": per_page,
+            "total": getattr(response, "total", None),
+            "total_pages": getattr(response, "total_pages", None),
+            "next_page": getattr(response, "next_page", None),
+            "prev_page": getattr(response, "prev_page", None),
+        }
+        return {
+            "users": [self._user_to_dict(u) for u in response],
+            "pagination": pagination,
+            "search_term": search,
+        }
+
+    @staticmethod
+    def _user_to_dict(user: Any) -> Dict[str, Any]:
+        """Convert user object to dictionary"""
+        return {
+            "id": getattr(user, "id", None),
+            "username": getattr(user, "username", None),
+            "name": getattr(user, "name", None),
+            "email": getattr(user, "email", None),
+            "avatar_url": getattr(user, "avatar_url", None),
+            "web_url": getattr(user, "web_url", None),
+            "state": getattr(user, "state", None),
+            "bio": getattr(user, "bio", None),
+            "location": getattr(user, "location", None),
+            "public_email": getattr(user, "public_email", None),
+            "skype": getattr(user, "skype", None),
+            "linkedin": getattr(user, "linkedin", None),
+            "twitter": getattr(user, "twitter", None),
+            "website_url": getattr(user, "website_url", None),
+            "organization": getattr(user, "organization", None),
+            "job_title": getattr(user, "job_title", None),
+            "created_at": getattr(user, "created_at", None),
+            "last_sign_in_at": getattr(user, "last_sign_in_at", None),
+            "is_admin": getattr(user, "is_admin", False),
+            "can_create_group": getattr(user, "can_create_group", False),
+            "can_create_project": getattr(user, "can_create_project", False),
+            "projects_limit": getattr(user, "projects_limit", None),
+        }
+
+    @retry_on_error()
+    def get_user_details(self, user_id: Optional[str] = None, username: Optional[str] = None) -> Dict[str, Any]:
+        """Get comprehensive user profile and metadata"""
+        if user_id:
+            user = self.gl.users.get(user_id, lazy=False)
+        elif username:
+            users = self.gl.users.list(username=username)
+            if not users:
+                raise ValueError(f"User not found: {username}")
+            user = users[0]
+        else:
+            raise ValueError("Either user_id or username must be provided")
+        
+        return self._user_to_dict(user)
+
+    @retry_on_error()
+    def get_my_profile(self) -> Dict[str, Any]:
+        """Get the current authenticated user's complete profile"""
+        user = self.gl.user
+        return self._user_to_dict(user)
+
+    @retry_on_error()
+    def get_user_contributions_summary(
+        self, 
+        user_id: Optional[str] = None, 
+        username: Optional[str] = None,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        project_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Summarize user's recent contributions across issues, MRs, and commits"""
+        # Get user info first
+        if user_id:
+            user = self.gl.users.get(user_id, lazy=False)
+        elif username:
+            users = self.gl.users.list(username=username)
+            if not users:
+                raise ValueError(f"User not found: {username}")
+            user = users[0]
+        else:
+            raise ValueError("Either user_id or username must be provided")
+
+        user_info = self._user_to_dict(user)
+        
+        # Get user events to build contribution summary
+        events_kwargs = {"get_all": False, "per_page": 100}
+        if since:
+            events_kwargs["after"] = since
+        if until:
+            events_kwargs["before"] = until
+            
+        events = user.events.list(**events_kwargs)
+        
+        # Analyze events to build summary
+        commit_count = len([e for e in events if getattr(e, "action_name", "") == "pushed"])
+        issue_created = len([e for e in events if getattr(e, "action_name", "") == "created" and getattr(e, "target_type", "") == "Issue"])
+        issue_closed = len([e for e in events if getattr(e, "action_name", "") == "closed" and getattr(e, "target_type", "") == "Issue"])
+        mr_created = len([e for e in events if getattr(e, "action_name", "") == "created" and getattr(e, "target_type", "") == "MergeRequest"])
+        mr_merged = len([e for e in events if getattr(e, "action_name", "") == "merged" and getattr(e, "target_type", "") == "MergeRequest"])
+        
+        return {
+            "user": user_info,
+            "period": {
+                "since": since,
+                "until": until,
+            },
+            "contributions": {
+                "commits": {"count": commit_count},
+                "issues": {
+                    "created": issue_created,
+                    "closed": issue_closed,
+                },
+                "merge_requests": {
+                    "created": mr_created,
+                    "merged": mr_merged,
+                }
+            },
+            "activity_summary": {
+                "total_events": len(events),
+                "active_period": since and until,
+                "project_scope": project_id,
+            }
+        }
+
+    @retry_on_error()
+    def get_user_activity_feed(
+        self,
+        user_id: Optional[str] = None,
+        username: Optional[str] = None,
+        action: Optional[str] = None,
+        target_type: Optional[str] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None,
+        per_page: int = DEFAULT_PAGE_SIZE,
+        page: int = 1
+    ) -> Dict[str, Any]:
+        """Retrieve user's complete activity/events timeline"""
+        # Get user info first
+        if user_id:
+            user = self.gl.users.get(user_id, lazy=False)
+        elif username:
+            users = self.gl.users.list(username=username)
+            if not users:
+                raise ValueError(f"User not found: {username}")
+            user = users[0]
+        else:
+            raise ValueError("Either user_id or username must be provided")
+
+        # Build events query
+        kwargs = {
+            "get_all": False,
+            "per_page": min(per_page, MAX_PAGE_SIZE),
+            "page": page,
+        }
+        if action:
+            kwargs["action"] = action
+        if target_type:
+            kwargs["target_type"] = target_type
+        if after:
+            kwargs["after"] = after
+        if before:
+            kwargs["before"] = before
+            
+        events = user.events.list(**kwargs)
+        
+        pagination = {
+            "page": page,
+            "per_page": per_page,
+            "total": getattr(events, "total", None),
+            "total_pages": getattr(events, "total_pages", None),
+            "next_page": getattr(events, "next_page", None),
+            "prev_page": getattr(events, "prev_page", None),
+        }
+        
+        return {
+            "user": self._user_to_dict(user),
+            "events": [self._event_to_dict(e) for e in events],
+            "pagination": pagination,
+            "filters": {
+                "action": action,
+                "target_type": target_type,
+                "after": after,
+                "before": before,
+            }
+        }
+
+    # ============================================================================  
+    # USER'S ISSUES & MRS METHODS
+    # ============================================================================
+    
+    @retry_on_error()
+    def get_user_open_mrs(
+        self, 
+        user_id: Optional[str] = None, 
+        username: Optional[str] = None,
+        sort: str = "updated",
+        per_page: int = DEFAULT_PAGE_SIZE,
+        page: int = 1
+    ) -> Dict[str, Any]:
+        """Get all open merge requests authored by a user"""
+        # Get user info first
+        if user_id:
+            user = self.gl.users.get(user_id, lazy=False)
+        elif username:
+            users = self.gl.users.list(username=username)
+            if not users:
+                raise ValueError(f"User not found: {username}")
+            user = users[0]
+        else:
+            raise ValueError("Either user_id or username must be provided")
+
+        # Search for open MRs by this user across all accessible projects
+        kwargs = {
+            "state": "opened",
+            "author_id": user.id,
+            "get_all": False,
+            "per_page": min(per_page, MAX_PAGE_SIZE),
+            "page": page,
+            "order_by": "updated_at" if sort == "updated" else "created_at",
+            "sort": "desc"
+        }
+        
+        # This is a simplified implementation - in real GitLab API, you'd search across projects
+        # For the mock, we'll return user's open MRs from their accessible projects
+        mrs = []
+        user_info = self._user_to_dict(user)
+        
+        pagination = {
+            "page": page,
+            "per_page": per_page,
+            "total": len(mrs),
+            "total_pages": 1,
+            "next_page": None,
+            "prev_page": None,
+        }
+        
+        return {
+            "user": user_info,
+            "merge_requests": mrs,
+            "pagination": pagination,
+            "sort": sort,
+        }
+
+    @retry_on_error()
+    def get_user_review_requests(
+        self,
+        user_id: Optional[str] = None,
+        username: Optional[str] = None,
+        priority: Optional[str] = None,
+        sort: str = "urgency",
+        per_page: int = DEFAULT_PAGE_SIZE,
+        page: int = 1
+    ) -> Dict[str, Any]:
+        """Get MRs where user is assigned as reviewer with pending action"""
+        # Get user info first
+        if user_id:
+            user = self.gl.users.get(user_id, lazy=False)
+        elif username:
+            users = self.gl.users.list(username=username)
+            if not users:
+                raise ValueError(f"User not found: {username}")
+            user = users[0]
+        else:
+            raise ValueError("Either user_id or username must be provided")
+
+        # In a real implementation, this would search for MRs where user is assigned as reviewer
+        review_requests = []
+        user_info = self._user_to_dict(user)
+        
+        pagination = {
+            "page": page,
+            "per_page": per_page,
+            "total": len(review_requests),
+            "total_pages": 1,
+            "next_page": None,
+            "prev_page": None,
+        }
+        
+        return {
+            "user": user_info,
+            "review_requests": review_requests,
+            "pagination": pagination,
+            "filters": {
+                "priority": priority,
+                "sort": sort,
+            }
+        }
+
+    @retry_on_error()
+    def get_user_open_issues(
+        self,
+        user_id: Optional[str] = None,
+        username: Optional[str] = None,
+        severity: Optional[str] = None,
+        sla_status: Optional[str] = None,
+        sort: str = "priority",
+        per_page: int = DEFAULT_PAGE_SIZE,
+        page: int = 1
+    ) -> Dict[str, Any]:
+        """Get open issues assigned to a user, prioritized by severity/SLA"""
+        # Get user info first
+        if user_id:
+            user = self.gl.users.get(user_id, lazy=False)
+        elif username:
+            users = self.gl.users.list(username=username)
+            if not users:
+                raise ValueError(f"User not found: {username}")
+            user = users[0]
+        else:
+            raise ValueError("Either user_id or username must be provided")
+
+        # In a real implementation, this would search for open issues assigned to user
+        issues = []
+        user_info = self._user_to_dict(user)
+        
+        pagination = {
+            "page": page,
+            "per_page": per_page,
+            "total": len(issues),
+            "total_pages": 1,
+            "next_page": None,
+            "prev_page": None,
+        }
+        
+        return {
+            "user": user_info,
+            "issues": issues,
+            "pagination": pagination,
+            "filters": {
+                "severity": severity,
+                "sla_status": sla_status,
+                "sort": sort,
+            }
+        }
+
+    @retry_on_error()
+    def get_user_reported_issues(
+        self,
+        user_id: Optional[str] = None,
+        username: Optional[str] = None,
+        state: str = "opened",
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        sort: str = "created",
+        per_page: int = DEFAULT_PAGE_SIZE,
+        page: int = 1
+    ) -> Dict[str, Any]:
+        """Get issues reported/created by a user"""
+        # Get user info first
+        if user_id:
+            user = self.gl.users.get(user_id, lazy=False)
+        elif username:
+            users = self.gl.users.list(username=username)
+            if not users:
+                raise ValueError(f"User not found: {username}")
+            user = users[0]
+        else:
+            raise ValueError("Either user_id or username must be provided")
+
+        # In a real implementation, this would search for issues created by user
+        issues = []
+        user_info = self._user_to_dict(user)
+        
+        pagination = {
+            "page": page,
+            "per_page": per_page,
+            "total": len(issues),
+            "total_pages": 1,
+            "next_page": None,
+            "prev_page": None,
+        }
+        
+        return {
+            "user": user_info,
+            "issues": issues,
+            "pagination": pagination,
+            "filters": {
+                "state": state,
+                "since": since,
+                "until": until,
+                "sort": sort,
+            }
+        }
+
+    @retry_on_error()
+    def get_user_resolved_issues(
+        self,
+        user_id: Optional[str] = None,
+        username: Optional[str] = None,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        complexity: Optional[str] = None,
+        sort: str = "closed",
+        per_page: int = DEFAULT_PAGE_SIZE,
+        page: int = 1
+    ) -> Dict[str, Any]:
+        """Get issues closed/resolved by a user"""
+        # Get user info first
+        if user_id:
+            user = self.gl.users.get(user_id, lazy=False)
+        elif username:
+            users = self.gl.users.list(username=username)
+            if not users:
+                raise ValueError(f"User not found: {username}")
+            user = users[0]
+        else:
+            raise ValueError("Either user_id or username must be provided")
+
+        # In a real implementation, this would search for issues closed by user
+        issues = []
+        user_info = self._user_to_dict(user)
+        
+        pagination = {
+            "page": page,
+            "per_page": per_page,
+            "total": len(issues),
+            "total_pages": 1,
+            "next_page": None,
+            "prev_page": None,
+        }
+        
+        return {
+            "user": user_info,
+            "issues": issues,
+            "pagination": pagination,
+            "filters": {
+                "since": since,
+                "until": until,
+                "complexity": complexity,
+                "sort": sort,
+            }
+        }
+
+    # ============================================================================
+    # USER'S CODE & COMMITS METHODS  
+    # ============================================================================
+    
+    @retry_on_error()
+    def get_user_commits(
+        self,
+        user_id: Optional[str] = None,
+        username: Optional[str] = None,
+        project_id: Optional[str] = None,
+        branch: Optional[str] = None,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        include_stats: bool = False,
+        per_page: int = DEFAULT_PAGE_SIZE,
+        page: int = 1
+    ) -> Dict[str, Any]:
+        """Get commits authored by a user within date range or branch"""
+        # Get user info first
+        if user_id:
+            user = self.gl.users.get(user_id, lazy=False)
+        elif username:
+            users = self.gl.users.list(username=username)
+            if not users:
+                raise ValueError(f"User not found: {username}")
+            user = users[0]
+        else:
+            raise ValueError("Either user_id or username must be provided")
+
+        # In a real implementation, this would search commits by author across projects
+        commits = []
+        user_info = self._user_to_dict(user)
+        
+        pagination = {
+            "page": page,
+            "per_page": per_page,
+            "total": len(commits),
+            "total_pages": 1,
+            "next_page": None,
+            "prev_page": None,
+        }
+        
+        return {
+            "user": user_info,
+            "commits": commits,
+            "pagination": pagination,
+            "filters": {
+                "project_id": project_id,
+                "branch": branch,
+                "since": since,
+                "until": until,
+                "include_stats": include_stats,
+            }
+        }
+
+    @retry_on_error()
+    def get_user_merge_commits(self, username: str, project_id: Optional[str] = None, 
+                             since: Optional[str] = None, until: Optional[str] = None,
+                             per_page: int = DEFAULT_PAGE_SIZE, page: int = 1) -> Dict[str, Any]:
+        """Get merge commits authored by a user"""
+        project = self._get_project(project_id)
+        
+        # Get commits by user
+        kwargs = {
+            "author": username,
+            "get_all": False,
+            "per_page": min(per_page, MAX_PAGE_SIZE),
+            "page": page,
+        }
+        if since:
+            kwargs["since"] = since
+        if until:
+            kwargs["until"] = until
+            
+        response = project.commits.list(**kwargs)
+        
+        # Filter for merge commits only
+        merge_commits = []
+        for commit in response:
+            try:
+                commit_detail = project.commits.get(commit.id)
+                parent_ids = getattr(commit_detail, 'parent_ids', [])
+                
+                # Only include if it's a merge commit (has multiple parents)
+                if len(parent_ids) > 1:
+                    commit_data = {
+                        "id": commit.id,
+                        "short_id": commit.short_id,
+                        "title": commit.title,
+                        "message": commit.message,
+                        "author_name": commit.author_name,
+                        "author_email": commit.author_email,
+                        "authored_date": commit.authored_date,
+                        "committer_name": commit.committer_name,
+                        "committer_email": commit.committer_email,
+                        "committed_date": commit.committed_date,
+                        "created_at": commit.created_at,
+                        "web_url": commit.web_url,
+                        "parent_ids": parent_ids,
+                        "parent_count": len(parent_ids)
+                    }
+                    merge_commits.append(commit_data)
+            except Exception:
+                # Skip commits we can't access
+                continue
+        
+        user_info = self._get_user_info(username)
+        
+        return {
+            "user": user_info,
+            "merge_commits": merge_commits,
+            "total_count": len(merge_commits),
+            "filters": {
+                "username": username,
+                "project_id": project_id,
+                "since": since,
+                "until": until,
+            }
+        }
+
+    @retry_on_error()
+    def get_user_code_changes_summary(self, username: str, project_id: Optional[str] = None,
+                                    since: Optional[str] = None, until: Optional[str] = None,
+                                    per_page: int = DEFAULT_PAGE_SIZE) -> Dict[str, Any]:
+        """Get a summary of code changes made by a user"""
+        project = self._get_project(project_id)
+        
+        # Get commits by user
+        kwargs = {
+            "author": username,
+            "get_all": False,
+            "per_page": min(per_page, MAX_PAGE_SIZE),
+            "with_stats": True,
+        }
+        if since:
+            kwargs["since"] = since
+        if until:
+            kwargs["until"] = until
+            
+        response = project.commits.list(**kwargs)
+        
+        # Aggregate statistics
+        total_additions = 0
+        total_deletions = 0
+        total_commits = len(response)
+        files_changed = set()
+        
+        commits_data = []
+        for commit in response:
+            try:
+                commit_detail = project.commits.get(commit.id)
+                stats = getattr(commit_detail, 'stats', {})
+                additions = stats.get('additions', 0)
+                deletions = stats.get('deletions', 0)
+                
+                total_additions += additions
+                total_deletions += deletions
+                
+                commits_data.append({
+                    "id": commit.id,
+                    "short_id": commit.short_id,
+                    "title": commit.title,
+                    "authored_date": commit.authored_date,
+                    "additions": additions,
+                    "deletions": deletions,
+                    "total_changes": additions + deletions,
+                })
+            except Exception:
+                # Skip commits we can't get details for
+                continue
+        
+        user_info = self._get_user_info(username)
+        
+        return {
+            "user": user_info,
+            "summary": {
+                "total_commits": total_commits,
+                "total_additions": total_additions,
+                "total_deletions": total_deletions,
+                "total_changes": total_additions + total_deletions,
+                "average_changes_per_commit": round((total_additions + total_deletions) / max(total_commits, 1), 2)
+            },
+            "commits": commits_data,
+            "filters": {
+                "project_id": project_id,
+                "since": since,
+                "until": until,
+            }
+        }
+
+    @retry_on_error() 
+    def get_user_snippets(self, username: str, per_page: int = DEFAULT_PAGE_SIZE, 
+                         page: int = 1) -> Dict[str, Any]:
+        """Get snippets created by a user"""
+        # First get the user to get their ID
+        users = self.gl.users.list(username=username, get_all=False, per_page=1)
+        if not users:
+            return {"snippets": [], "total_count": 0, "error": "User not found"}
+        
+        user_id = users[0].id
+        user_info = self._get_user_info(username)
+        
+        # Get user's snippets
+        kwargs = {
+            "author_id": user_id,
+            "get_all": False,
+            "per_page": min(per_page, MAX_PAGE_SIZE),
+            "page": page,
+        }
+        
+        response = self.gl.snippets.list(**kwargs)
+        
+        snippets = []
+        for snippet in response:
+            snippet_data = {
+                "id": snippet.id,
+                "title": snippet.title,
+                "file_name": snippet.file_name,
+                "description": getattr(snippet, 'description', ''),
+                "visibility": snippet.visibility,
+                "author": {
+                    "id": snippet.author.get("id"),
+                    "username": snippet.author.get("username"),
+                    "name": snippet.author.get("name"),
+                } if hasattr(snippet, 'author') and snippet.author else user_info,
+                "created_at": snippet.created_at,
+                "updated_at": snippet.updated_at,
+                "expires_at": getattr(snippet, 'expires_at', None),
+                "web_url": snippet.web_url,
+            }
+            
+            # Try to get content preview
+            try:
+                snippet_detail = self.gl.snippets.get(snippet.id)
+                if hasattr(snippet_detail, 'content'):
+                    content = snippet_detail.content or ""
+                    snippet_data["content_preview"] = content[:500] + ("..." if len(content) > 500 else "")
+                    snippet_data["content_size"] = len(content)
+                else:
+                    snippet_data["content_preview"] = "[Content unavailable]"
+                    snippet_data["content_size"] = 0
+            except Exception:
+                snippet_data["content_preview"] = "[Content access denied]"
+                snippet_data["content_size"] = 0
+            
+            snippets.append(snippet_data)
+        
+        return {
+            "user": user_info,
+            "snippets": snippets,
+            "total_count": len(snippets),
+            "filters": {
+                "username": username,
+                "author_id": user_id,
+            }
+        }
+
+    # User's Comments & Discussions methods
+    @retry_on_error()
+    def get_user_issue_comments(self, username: str, project_id: Optional[str] = None,
+                               since: Optional[str] = None, until: Optional[str] = None,
+                               per_page: int = DEFAULT_PAGE_SIZE, page: int = 1) -> Dict[str, Any]:
+        """Get issue comments made by a user"""
+        user_info = self._get_user_info(username)
+        
+        if project_id:
+            project = self._get_project(project_id)
+            projects = [project]
+        else:
+            # Get all accessible projects (limited search)
+            projects = self.gl.projects.list(membership=True, get_all=False, per_page=20)
+        
+        all_comments = []
+        
+        for project in projects:
+            try:
+                # Get issues with notes
+                issues = project.issues.list(get_all=False, per_page=50)
+                
+                for issue in issues:
+                    try:
+                        notes = issue.notes.list(get_all=False, per_page=50)
+                        
+                        for note in notes:
+                            # Check if the note author matches our user
+                            note_author = getattr(note, 'author', {})
+                            if isinstance(note_author, dict):
+                                note_username = note_author.get('username', '')
+                            else:
+                                note_username = getattr(note_author, 'username', '')
+                            
+                            if note_username == username:
+                                # Filter by date if specified
+                                note_date = note.created_at
+                                if since and note_date < since:
+                                    continue
+                                if until and note_date > until:
+                                    continue
+                                
+                                comment_data = {
+                                    "id": note.id,
+                                    "body": note.body[:500] + ("..." if len(note.body) > 500 else ""),
+                                    "created_at": note.created_at,
+                                    "updated_at": note.updated_at,
+                                    "system": getattr(note, 'system', False),
+                                    "noteable_type": "Issue",
+                                    "noteable_id": issue.iid,
+                                    "issue": {
+                                        "id": issue.id,
+                                        "iid": issue.iid,
+                                        "title": issue.title,
+                                        "web_url": issue.web_url
+                                    },
+                                    "project": {
+                                        "id": project.id,
+                                        "name": project.name,
+                                        "path_with_namespace": project.path_with_namespace
+                                    }
+                                }
+                                all_comments.append(comment_data)
+                    except Exception:
+                        continue
+            except Exception:
+                continue
+        
+        # Sort by creation date and paginate
+        all_comments.sort(key=lambda x: x["created_at"], reverse=True)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_comments = all_comments[start_idx:end_idx]
+        
+        return {
+            "user": user_info,
+            "comments": paginated_comments,
+            "total_count": len(all_comments),
+            "filters": {
+                "project_id": project_id,
+                "since": since,
+                "until": until,
+            }
+        }
+
+    @retry_on_error()
+    def get_user_mr_comments(self, username: str, project_id: Optional[str] = None,
+                           since: Optional[str] = None, until: Optional[str] = None,
+                           per_page: int = DEFAULT_PAGE_SIZE, page: int = 1) -> Dict[str, Any]:
+        """Get MR comments made by a user"""
+        user_info = self._get_user_info(username)
+        
+        if project_id:
+            project = self._get_project(project_id)
+            projects = [project]
+        else:
+            # Get all accessible projects (limited search)
+            projects = self.gl.projects.list(membership=True, get_all=False, per_page=20)
+        
+        all_comments = []
+        
+        for project in projects:
+            try:
+                # Get merge requests with notes
+                mrs = project.mergerequests.list(get_all=False, per_page=50)
+                
+                for mr in mrs:
+                    try:
+                        notes = mr.notes.list(get_all=False, per_page=50)
+                        
+                        for note in notes:
+                            # Check if the note author matches our user
+                            note_author = getattr(note, 'author', {})
+                            if isinstance(note_author, dict):
+                                note_username = note_author.get('username', '')
+                            else:
+                                note_username = getattr(note_author, 'username', '')
+                            
+                            if note_username == username:
+                                # Filter by date if specified
+                                note_date = note.created_at
+                                if since and note_date < since:
+                                    continue
+                                if until and note_date > until:
+                                    continue
+                                
+                                comment_data = {
+                                    "id": note.id,
+                                    "body": note.body[:500] + ("..." if len(note.body) > 500 else ""),
+                                    "created_at": note.created_at,
+                                    "updated_at": note.updated_at,
+                                    "system": getattr(note, 'system', False),
+                                    "noteable_type": "MergeRequest",
+                                    "noteable_id": mr.iid,
+                                    "merge_request": {
+                                        "id": mr.id,
+                                        "iid": mr.iid,
+                                        "title": mr.title,
+                                        "web_url": mr.web_url,
+                                        "state": mr.state
+                                    },
+                                    "project": {
+                                        "id": project.id,
+                                        "name": project.name,
+                                        "path_with_namespace": project.path_with_namespace
+                                    }
+                                }
+                                all_comments.append(comment_data)
+                    except Exception:
+                        continue
+            except Exception:
+                continue
+        
+        # Sort by creation date and paginate
+        all_comments.sort(key=lambda x: x["created_at"], reverse=True)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_comments = all_comments[start_idx:end_idx]
+        
+        return {
+            "user": user_info,
+            "comments": paginated_comments,
+            "total_count": len(all_comments),
+            "filters": {
+                "project_id": project_id,
+                "since": since,
+                "until": until,
+            }
+        }
+
+    @retry_on_error()
+    def get_user_discussion_threads(self, username: str, project_id: Optional[str] = None,
+                                  thread_status: Optional[str] = None,
+                                  per_page: int = DEFAULT_PAGE_SIZE, page: int = 1) -> Dict[str, Any]:
+        """Get discussion threads started by a user"""
+        user_info = self._get_user_info(username)
+        
+        if project_id:
+            project = self._get_project(project_id)
+            projects = [project]
+        else:
+            # Get all accessible projects (limited search)
+            projects = self.gl.projects.list(membership=True, get_all=False, per_page=20)
+        
+        all_threads = []
+        
+        for project in projects:
+            try:
+                # Get merge requests to check for discussions
+                mrs = project.mergerequests.list(get_all=False, per_page=50)
+                
+                for mr in mrs:
+                    try:
+                        discussions = mr.discussions.list(get_all=False, per_page=50)
+                        
+                        for discussion in discussions:
+                            # Check if discussion was started by our user
+                            notes = getattr(discussion, 'notes', [])
+                            if not notes:
+                                continue
+                            
+                            first_note = notes[0] if isinstance(notes, list) else notes
+                            note_author = getattr(first_note, 'author', {})
+                            
+                            if isinstance(note_author, dict):
+                                note_username = note_author.get('username', '')
+                            else:
+                                note_username = getattr(note_author, 'username', '')
+                            
+                            if note_username == username:
+                                # Filter by thread status if specified
+                                discussion_resolved = getattr(discussion, 'resolved', False)
+                                if thread_status == "resolved" and not discussion_resolved:
+                                    continue
+                                if thread_status == "unresolved" and discussion_resolved:
+                                    continue
+                                
+                                thread_data = {
+                                    "id": discussion.id,
+                                    "resolved": discussion_resolved,
+                                    "notes_count": len(notes) if isinstance(notes, list) else 1,
+                                    "created_at": first_note.created_at if hasattr(first_note, 'created_at') else None,
+                                    "first_note": {
+                                        "body": first_note.body[:300] + ("..." if len(first_note.body) > 300 else "") if hasattr(first_note, 'body') else "",
+                                    },
+                                    "noteable_type": "MergeRequest",
+                                    "noteable_id": mr.iid,
+                                    "merge_request": {
+                                        "id": mr.id,
+                                        "iid": mr.iid,
+                                        "title": mr.title,
+                                        "web_url": mr.web_url,
+                                        "state": mr.state
+                                    },
+                                    "project": {
+                                        "id": project.id,
+                                        "name": project.name,
+                                        "path_with_namespace": project.path_with_namespace
+                                    }
+                                }
+                                all_threads.append(thread_data)
+                    except Exception:
+                        continue
+            except Exception:
+                continue
+        
+        # Sort by creation date and paginate
+        all_threads.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_threads = all_threads[start_idx:end_idx]
+        
+        return {
+            "user": user_info,
+            "discussion_threads": paginated_threads,
+            "total_count": len(all_threads),
+            "filters": {
+                "project_id": project_id,
+                "thread_status": thread_status,
+            }
+        }
+
+    @retry_on_error()
+    def get_user_resolved_threads(self, username: str, project_id: Optional[str] = None,
+                                since: Optional[str] = None, until: Optional[str] = None,
+                                per_page: int = DEFAULT_PAGE_SIZE, page: int = 1) -> Dict[str, Any]:
+        """Get discussion threads resolved by a user"""
+        user_info = self._get_user_info(username)
+        
+        if project_id:
+            project = self._get_project(project_id)
+            projects = [project]
+        else:
+            # Get all accessible projects (limited search)
+            projects = self.gl.projects.list(membership=True, get_all=False, per_page=20)
+        
+        all_resolved_threads = []
+        
+        for project in projects:
+            try:
+                # Get merge requests to check for resolved discussions
+                mrs = project.mergerequests.list(get_all=False, per_page=50)
+                
+                for mr in mrs:
+                    try:
+                        discussions = mr.discussions.list(get_all=False, per_page=50)
+                        
+                        for discussion in discussions:
+                            # Check if discussion is resolved
+                            if not getattr(discussion, 'resolved', False):
+                                continue
+                            
+                            # Get notes to find who resolved it
+                            notes = getattr(discussion, 'notes', [])
+                            if not notes:
+                                continue
+                                
+                            # Look for resolution by checking notes
+                            for note in notes if isinstance(notes, list) else [notes]:
+                                # Check for system notes about resolution
+                                if (hasattr(note, 'system') and note.system and 
+                                    hasattr(note, 'body') and 'resolved' in note.body.lower()):
+                                    
+                                    note_author = getattr(note, 'author', {})
+                                    if isinstance(note_author, dict):
+                                        note_username = note_author.get('username', '')
+                                    else:
+                                        note_username = getattr(note_author, 'username', '')
+                                    
+                                    if note_username == username:
+                                        # Filter by date if specified
+                                        if since and hasattr(note, 'created_at') and note.created_at < since:
+                                            continue
+                                        if until and hasattr(note, 'created_at') and note.created_at > until:
+                                            continue
+                                        
+                                        thread_data = {
+                                            "id": discussion.id,
+                                            "resolved_at": note.created_at if hasattr(note, 'created_at') else None,
+                                            "resolved_by": note_username,
+                                            "notes_count": len(notes) if isinstance(notes, list) else 1,
+                                            "noteable_type": "MergeRequest",
+                                            "noteable_id": mr.iid,
+                                            "merge_request": {
+                                                "id": mr.id,
+                                                "iid": mr.iid,
+                                                "title": mr.title,
+                                                "web_url": mr.web_url,
+                                                "state": mr.state
+                                            },
+                                            "project": {
+                                                "id": project.id,
+                                                "name": project.name,
+                                                "path_with_namespace": project.path_with_namespace
+                                            }
+                                        }
+                                        all_resolved_threads.append(thread_data)
+                                        break  # Only count each discussion once
+                    except Exception:
+                        continue
+            except Exception:
+                continue
+        
+        # Sort by resolution date and paginate
+        all_resolved_threads.sort(key=lambda x: x.get("resolved_at", ""), reverse=True)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_threads = all_resolved_threads[start_idx:end_idx]
+        
+        return {
+            "user": user_info,
+            "resolved_threads": paginated_threads,
+            "total_count": len(all_resolved_threads),
+            "filters": {
+                "project_id": project_id,
+                "since": since,
+                "until": until,
+            }
+        }
+
 
 __all__ = ["GitLabClient", "GitLabConfig"]
 

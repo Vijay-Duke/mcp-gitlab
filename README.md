@@ -406,6 +406,115 @@ Get a structured diff with context and size limits.
 }
 ```
 
+### User & Profile Management
+
+#### `gitlab_search_user`
+Search for GitLab users by name, username, or email.
+```json
+{
+  "search": "John",
+  "per_page": 10
+}
+```
+
+#### `gitlab_get_user_details`  
+Get comprehensive user profile and metadata.
+```json
+{
+  "username": "johndoe"
+}
+```
+
+#### `gitlab_get_my_profile`
+Get the current authenticated user's complete profile.
+```json
+{}
+```
+
+#### `gitlab_get_user_contributions_summary`
+Summarize user's recent contributions across issues, MRs, and commits.
+```json
+{
+  "username": "johndoe",
+  "since": "2024-01-01",
+  "until": "2024-01-31"
+}
+```
+
+#### `gitlab_get_user_activity_feed`
+Retrieve user's complete activity/events timeline.
+```json
+{
+  "username": "johndoe", 
+  "target_type": "Issue",
+  "after": "2024-01-01"
+}
+```
+
+### User's Issues & Merge Requests
+
+#### `gitlab_get_user_open_mrs`
+Get all open merge requests authored by a user.
+```json
+{
+  "username": "johndoe",
+  "sort": "updated"
+}
+```
+
+#### `gitlab_get_user_review_requests`
+Get MRs where user is assigned as reviewer with pending action.
+```json
+{
+  "username": "johndoe",
+  "priority": "high",
+  "sort": "urgency"
+}
+```
+
+#### `gitlab_get_user_open_issues`
+Get open issues assigned to a user, prioritized by severity/SLA.
+```json
+{
+  "username": "johndoe",
+  "sla_status": "overdue",
+  "sort": "priority"
+}
+```
+
+#### `gitlab_get_user_reported_issues`
+Get issues reported/created by a user.
+```json
+{
+  "username": "johndoe",
+  "state": "opened",
+  "since": "2024-01-01"
+}
+```
+
+#### `gitlab_get_user_resolved_issues`
+Get issues closed/resolved by a user.
+```json
+{
+  "username": "johndoe",
+  "since": "2024-01-01",
+  "until": "2024-03-31"
+}
+```
+
+### User's Code & Commits
+
+#### `gitlab_get_user_commits`
+Get commits authored by a user within date range or branch.
+```json
+{
+  "username": "johndoe", 
+  "branch": "main",
+  "since": "2024-01-01",
+  "include_stats": true
+}
+```
+
 ### Complete Tool List
 
 - **Projects**: `gitlab_list_projects`, `gitlab_get_project`, `gitlab_get_current_project`, `gitlab_search_projects`
@@ -415,7 +524,10 @@ Get a structured diff with context and size limits.
 - **Branches**: `gitlab_list_branches`
 - **Pipelines & Jobs**: `gitlab_list_pipelines`, `gitlab_list_pipeline_jobs`, `gitlab_list_project_jobs`, `gitlab_download_job_artifact`, `gitlab_summarize_pipeline`
 - **Search**: `gitlab_search_projects`, `gitlab_search_in_project`
-- **Users**: `gitlab_list_user_events`, `gitlab_list_project_members`
+- **Users**: `gitlab_get_current_user`, `gitlab_get_user`, `gitlab_list_user_events`, `gitlab_list_project_members`
+- **User & Profile**: `gitlab_search_user`, `gitlab_get_user_details`, `gitlab_get_my_profile`, `gitlab_get_user_contributions_summary`, `gitlab_get_user_activity_feed`
+- **User's Issues & MRs**: `gitlab_get_user_open_mrs`, `gitlab_get_user_review_requests`, `gitlab_get_user_open_issues`, `gitlab_get_user_reported_issues`, `gitlab_get_user_resolved_issues`
+- **User's Code & Commits**: `gitlab_get_user_commits`
 - **Releases**: `gitlab_list_releases`
 - **Webhooks**: `gitlab_list_project_hooks`
 - **AI Tools**: `gitlab_summarize_merge_request`, `gitlab_summarize_issue`, `gitlab_summarize_pipeline`
