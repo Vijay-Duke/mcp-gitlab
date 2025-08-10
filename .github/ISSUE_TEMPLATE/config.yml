@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: GitHub Discussions
+    url: https://github.com/Vijay-Duke/mcp-gitlab/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: Documentation
+    url: https://github.com/Vijay-Duke/mcp-gitlab#readme
+    about: Check the documentation for usage and configuration help
+  - name: GitLab API Documentation
+    url: https://docs.gitlab.com/ee/api/
+    about: Reference for GitLab API endpoints and functionality
