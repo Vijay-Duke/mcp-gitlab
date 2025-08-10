@@ -21,8 +21,6 @@ try:
     from .gitlab_client import GitLabClient, GitLabConfig
     from .git_detector import GitDetector
     from .utils import GitLabClientManager, sanitize_error, truncate_response
-    from .gitlab_client import GitLabClient, GitLabConfig
-    from .utils import GitLabClientManager, sanitize_error, truncate_response
     from .constants import (
         DEFAULT_GITLAB_URL, MAX_RESPONSE_SIZE, LOG_LEVEL, LOG_FORMAT,
         JSON_LOGGING, ERROR_NO_TOKEN, ERROR_AUTH_FAILED, ERROR_NOT_FOUND,
