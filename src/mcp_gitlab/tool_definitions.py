@@ -823,5 +823,272 @@ TOOLS: List[types.Tool] = [
                 "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
             }
         }
+    ),
+    
+    # User & Profile tools
+    types.Tool(
+        name=TOOL_SEARCH_USER,
+        description=desc.DESC_SEARCH_USER,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "search_term": {"type": "string", "description": "Username or email to search for"},
+                "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+            },
+            "required": ["search_term"]
+        }
+    ),
+    types.Tool(
+        name=TOOL_GET_USER_DETAILS,
+        description=desc.DESC_GET_USER_DETAILS,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username string"},
+                "include_projects": {"type": "boolean", "description": "Include user's projects", "default": False},
+                "include_groups": {"type": "boolean", "description": "Include user's groups", "default": False}
+            },
+            "required": ["username"]
+        }
+    ),
+    types.Tool(
+        name=TOOL_GET_MY_PROFILE,
+        description=desc.DESC_GET_MY_PROFILE,
+        inputSchema={
+            "type": "object",
+            "properties": {}
+        }
+    ),
+    types.Tool(
+        name=TOOL_GET_USER_CONTRIBUTIONS_SUMMARY,
+        description=desc.DESC_GET_USER_CONTRIBUTIONS_SUMMARY,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username string"},
+                "since": {"type": "string", "description": "Start date (YYYY-MM-DD)", "default": "30 days ago"},
+                "until": {"type": "string", "description": "End date (YYYY-MM-DD)", "default": "today"}
+            },
+            "required": ["username"]
+        }
+    ),
+    types.Tool(
+        name=TOOL_GET_USER_ACTIVITY_FEED,
+        description=desc.DESC_GET_USER_ACTIVITY_FEED,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username string"},
+                "action": {"type": "string", "description": "Event action type", "enum": ["created", "updated", "closed", "reopened", "pushed", "commented", "merged", "joined", "left", "destroyed", "expired", "approved"]},
+                "target_type": {"type": "string", "description": "Event target type", "enum": ["issue", "milestone", "merge_request", "note", "project", "snippet", "user", "wiki"]},
+                "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": SMALL_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+            },
+            "required": ["username"]
+        }
+    ),
+    
+    # User's Issues & MRs tools
+    types.Tool(
+        name=TOOL_GET_USER_OPEN_MRS,
+        description=desc.DESC_GET_USER_OPEN_MRS,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username string"},
+                "scope": {"type": "string", "description": "MR scope", "enum": ["created", "assigned", "all"], "default": "created"},
+                "draft": {"type": "string", "description": "Filter by draft status", "enum": ["yes", "no", "all"], "default": "all"},
+                "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+            },
+            "required": ["username"]
+        }
+    ),
+    types.Tool(
+        name=TOOL_GET_USER_REVIEW_REQUESTS,
+        description=desc.DESC_GET_USER_REVIEW_REQUESTS,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username string"},
+                "state": {"type": "string", "description": "Merge request state", "enum": ["opened", "closed", "locked", "merged"], "default": "opened"},
+                "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+            },
+            "required": ["username"]
+        }
+    ),
+    types.Tool(
+        name=TOOL_GET_USER_OPEN_ISSUES,
+        description=desc.DESC_GET_USER_OPEN_ISSUES,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username string"},
+                "scope": {"type": "string", "description": "Issue scope", "enum": ["created", "assigned", "all"], "default": "all"},
+                "labels": {"type": "string", "description": "Comma-separated label names"},
+                "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+            },
+            "required": ["username"]
+        }
+    ),
+    types.Tool(
+        name=TOOL_GET_USER_REPORTED_ISSUES,
+        description=desc.DESC_GET_USER_REPORTED_ISSUES,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username string"},
+                "state": {"type": "string", "description": "Issue state", "enum": ["opened", "closed", "all"], "default": "opened"},
+                "since": {"type": "string", "description": "Issues created after date (YYYY-MM-DD)"},
+                "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+            },
+            "required": ["username"]
+        }
+    ),
+    types.Tool(
+        name=TOOL_GET_USER_RESOLVED_ISSUES,
+        description=desc.DESC_GET_USER_RESOLVED_ISSUES,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username string"},
+                "since": {"type": "string", "description": "Issues resolved after date (YYYY-MM-DD)"},
+                "until": {"type": "string", "description": "Issues resolved before date (YYYY-MM-DD)"},
+                "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+            },
+            "required": ["username"]
+        }
+    ),
+    
+    # User's Code & Commits tools
+    types.Tool(
+        name=TOOL_GET_USER_COMMITS,
+        description=desc.DESC_GET_USER_COMMITS,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username string"},
+                "project_id": {"type": "string", "description": "Optional project scope filter"},
+                "since": {"type": "string", "description": "Commits after date (YYYY-MM-DD)"},
+                "until": {"type": "string", "description": "Commits before date (YYYY-MM-DD)"},
+                "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+            },
+            "required": ["username"]
+        }
+    ),
+    types.Tool(
+        name=TOOL_GET_USER_MERGE_COMMITS,
+        description=desc.DESC_GET_USER_MERGE_COMMITS,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username string"},
+                "project_id": {"type": "string", "description": "Optional project scope filter"},
+                "since": {"type": "string", "description": "Merges after date (YYYY-MM-DD)"},
+                "until": {"type": "string", "description": "Merges before date (YYYY-MM-DD)"},
+                "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+            },
+            "required": ["username"]
+        }
+    ),
+    types.Tool(
+        name=TOOL_GET_USER_CODE_CHANGES_SUMMARY,
+        description=desc.DESC_GET_USER_CODE_CHANGES_SUMMARY,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username string"},
+                "project_id": {"type": "string", "description": "Optional project scope filter"},
+                "since": {"type": "string", "description": "Changes after date (YYYY-MM-DD)", "default": "30 days ago"},
+                "until": {"type": "string", "description": "Changes before date (YYYY-MM-DD)", "default": "today"}
+            },
+            "required": ["username"]
+        }
+    ),
+    types.Tool(
+        name=TOOL_GET_USER_SNIPPETS,
+        description=desc.DESC_GET_USER_SNIPPETS,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username string"},
+                "visibility": {"type": "string", "description": "Snippet visibility", "enum": ["public", "internal", "private", "all"], "default": "all"},
+                "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+            },
+            "required": ["username"]
+        }
+    ),
+    
+    # User's Comments & Discussions tools
+    types.Tool(
+        name=TOOL_GET_USER_ISSUE_COMMENTS,
+        description=desc.DESC_GET_USER_ISSUE_COMMENTS,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username string"},
+                "project_id": {"type": "string", "description": "Optional project scope filter"},
+                "since": {"type": "string", "description": "Comments after date (YYYY-MM-DD)"},
+                "until": {"type": "string", "description": "Comments before date (YYYY-MM-DD)"},
+                "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+            },
+            "required": ["username"]
+        }
+    ),
+    types.Tool(
+        name=TOOL_GET_USER_MR_COMMENTS,
+        description=desc.DESC_GET_USER_MR_COMMENTS,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username string"},
+                "project_id": {"type": "string", "description": "Optional project scope filter"},
+                "since": {"type": "string", "description": "Comments after date (YYYY-MM-DD)"},
+                "until": {"type": "string", "description": "Comments before date (YYYY-MM-DD)"},
+                "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+            },
+            "required": ["username"]
+        }
+    ),
+    types.Tool(
+        name=TOOL_GET_USER_DISCUSSION_THREADS,
+        description=desc.DESC_GET_USER_DISCUSSION_THREADS,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username string"},
+                "project_id": {"type": "string", "description": "Optional project scope filter"},
+                "thread_status": {"type": "string", "description": "Filter by thread status", "enum": ["resolved", "unresolved"]},
+                "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+            },
+            "required": ["username"]
+        }
+    ),
+    types.Tool(
+        name=TOOL_GET_USER_RESOLVED_THREADS,
+        description=desc.DESC_GET_USER_RESOLVED_THREADS,
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "username": {"type": "string", "description": "Username string"},
+                "project_id": {"type": "string", "description": "Optional project scope filter"},
+                "since": {"type": "string", "description": "Threads resolved after date (YYYY-MM-DD)"},
+                "until": {"type": "string", "description": "Threads resolved before date (YYYY-MM-DD)"},
+                "per_page": {"type": "integer", "description": desc.DESC_PER_PAGE, "default": DEFAULT_PAGE_SIZE, "minimum": 1, "maximum": MAX_PAGE_SIZE},
+                "page": {"type": "integer", "description": desc.DESC_PAGE_NUMBER, "default": 1, "minimum": 1}
+            },
+            "required": ["username"]
+        }
     )
 ]

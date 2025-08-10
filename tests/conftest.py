@@ -237,15 +237,4 @@ def pytest_configure(config):  # pragma: no cover - test harness setup
     config.addinivalue_line("markers", "asyncio: mark test to run on event loop")
 
 
-import inspect
-
-
-@pytest.hookimpl()
-def pytest_pyfunc_call(pyfuncitem):  # pragma: no cover - test harness setup
-    if pyfuncitem.get_closest_marker("asyncio"):
-        func = pyfuncitem.obj
-        params = inspect.signature(func).parameters
-        kwargs = {name: pyfuncitem.funcargs[name] for name in params}
-        asyncio.run(func(**kwargs))
-        return True
-    return None
+# Removed custom pytest_pyfunc_call hook - pytest-asyncio handles this automatically
