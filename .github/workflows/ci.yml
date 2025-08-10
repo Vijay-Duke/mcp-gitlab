@@ -1,0 +1,207 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.10'
+  UV_SYSTEM_PYTHON: 1
+
+jobs:
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Install dependencies
+        run: |
+          uv pip install ruff mypy pylint black isort
+          uv pip install -e .[test]
+          
+      - name: Run Ruff linter
+        run: ruff check src/ tests/
+        continue-on-error: true
+        
+      - name: Run Black formatter check
+        run: black --check src/ tests/
+        continue-on-error: true
+        
+      - name: Run isort import checker
+        run: isort --check-only src/ tests/
+        continue-on-error: true
+        
+      - name: Run MyPy type checker
+        run: mypy src/ --ignore-missing-imports
+        continue-on-error: true
+        
+      - name: Run Pylint
+        run: pylint src/mcp_gitlab --exit-zero
+
+  test:
+    name: Test Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          
+      - name: Install dependencies
+        run: |
+          uv pip install -e .[test]
+          
+      - name: Run tests with pytest
+        run: |
+          pytest tests/ -v --cov=src/mcp_gitlab --cov-report=xml --cov-report=html --cov-report=term
+        env:
+          GITLAB_PRIVATE_TOKEN: ${{ secrets.GITLAB_PRIVATE_TOKEN }}
+          GITLAB_URL: https://gitlab.com
+          
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: |
+            coverage.xml
+            htmlcov/
+            
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-${{ matrix.python-version }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Install dependencies
+        run: |
+          uv pip install safety bandit pip-audit
+          uv pip install -e .
+          
+      - name: Run Safety security check
+        run: safety check --json
+        continue-on-error: true
+        
+      - name: Run Bandit security linter
+        run: bandit -r src/ -f json -o bandit-report.json
+        continue-on-error: true
+        
+      - name: Run pip-audit for dependency vulnerabilities
+        run: pip-audit
+        continue-on-error: true
+        
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+
+  build:
+    name: Build Package
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Install build dependencies
+        run: |
+          uv pip install build wheel setuptools
+          
+      - name: Build distribution packages
+        run: python -m build
+        
+      - name: Check distribution packages
+        run: |
+          uv pip install twine
+          twine check dist/*
+          
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Install package
+        run: |
+          uv pip install -e .[test]
+          
+      - name: Run integration tests
+        run: |
+          pytest tests/test_integration.py -v -m integration
+        env:
+          GITLAB_PRIVATE_TOKEN: ${{ secrets.GITLAB_TEST_TOKEN }}
+          GITLAB_URL: ${{ secrets.GITLAB_TEST_URL }}
+        continue-on-error: true

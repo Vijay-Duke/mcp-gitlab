@@ -1,0 +1,66 @@
+name: Dependency Update
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # Weekly on Monday
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-dependencies:
+    name: Update Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          
+      - name: Update dependencies
+        run: |
+          uv pip install --upgrade pip setuptools wheel
+          uv pip install --upgrade -r <(uv pip freeze | cut -d= -f1)
+          uv lock --upgrade
+          
+      - name: Run tests after update
+        run: |
+          uv pip install -e .[test]
+          pytest tests/ -v
+        continue-on-error: true
+        
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: Update dependencies'
+          title: 'chore: Weekly dependency updates'
+          body: |
+            ## Automated Dependency Update
+            
+            This PR contains automated dependency updates for the week.
+            
+            ### Changes
+            - Updated Python dependencies to latest versions
+            - Regenerated uv.lock file
+            
+            ### Testing
+            - [ ] All tests pass
+            - [ ] No security vulnerabilities detected
+            - [ ] Application runs correctly
+            
+            Please review and merge if all checks pass.
+          branch: deps/weekly-update
+          delete-branch: true
+          labels: |
+            dependencies
+            automated

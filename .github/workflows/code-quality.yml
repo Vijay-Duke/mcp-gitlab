@@ -1,0 +1,92 @@
+name: Code Quality
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 0 * * 1'  # Weekly on Monday
+  workflow_dispatch:
+
+jobs:
+  sonarcloud:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        continue-on-error: true
+        
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+      
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'python' ]
+        
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+        
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        
+  complexity:
+    name: Code Complexity Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          
+      - name: Install analysis tools
+        run: |
+          uv pip install radon xenon flake8 flake8-cognitive-complexity
+          
+      - name: Cyclomatic Complexity
+        run: |
+          echo "## Cyclomatic Complexity Report" >> $GITHUB_STEP_SUMMARY
+          radon cc src/ -s -a >> $GITHUB_STEP_SUMMARY
+          
+      - name: Maintainability Index
+        run: |
+          echo "## Maintainability Index" >> $GITHUB_STEP_SUMMARY
+          radon mi src/ -s >> $GITHUB_STEP_SUMMARY
+          
+      - name: Check complexity thresholds
+        run: |
+          xenon --max-absolute B --max-modules B --max-average A src/
+        continue-on-error: true
+        
+      - name: Cognitive Complexity
+        run: |
+          flake8 src/ --select=CCR --max-cognitive-complexity=10
+        continue-on-error: true

@@ -1,5 +1,11 @@
 # MCP GitLab Server
 
+[![CI](https://github.com/Vijay-Duke/mcp-gitlab/actions/workflows/ci.yml/badge.svg)](https://github.com/Vijay-Duke/mcp-gitlab/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Vijay-Duke/mcp-gitlab/branch/main/graph/badge.svg)](https://codecov.io/gh/Vijay-Duke/mcp-gitlab)
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green)](https://opensource.org/licenses/Apache-2.0)
+[![MCP](https://img.shields.io/badge/MCP-Compatible-purple)](https://github.com/anthropics/mcp)
+
 A Model Context Protocol (MCP) server that provides comprehensive GitLab API integration. This server enables LLMs to interact with GitLab repositories, manage merge requests, issues, and perform various Git operations.
 
 ## Features
@@ -584,6 +590,42 @@ result = await session.call_tool("gitlab_batch_operations", {
 ```
 
 ## Development
+
+### Quick Start
+
+```bash
+# Install development dependencies
+make install-dev
+
+# Run all checks locally
+make ci-local
+
+# Format code
+make format
+
+# Run tests with coverage
+make test-cov
+```
+
+### CI/CD Pipeline
+
+This project uses GitHub Actions for continuous integration and deployment:
+
+- **CI Pipeline**: Runs on every push and PR
+  - Linting (Ruff, Black, isort, MyPy)
+  - Testing (pytest with coverage)
+  - Security scanning (Bandit, Safety, pip-audit)
+  - Multi-version Python testing (3.10, 3.11, 3.12)
+  
+- **Code Quality**: 
+  - SonarCloud analysis
+  - CodeQL security analysis
+  - Complexity metrics (Radon, Xenon)
+  
+- **Release Pipeline**: Automated releases on version tags
+  - PyPI package publishing
+  - Docker image building and publishing
+  - GitHub release creation
 
 ### Running Tests
 
