@@ -211,3 +211,38 @@ TOOL_UPDATE_SNIPPET = "gitlab_update_snippet"
 TOOL_LIST_PIPELINE_JOBS = "gitlab_list_pipeline_jobs"
 TOOL_DOWNLOAD_JOB_ARTIFACT = "gitlab_download_job_artifact"
 TOOL_LIST_PROJECT_JOBS = "gitlab_list_project_jobs"
+
+# Single-resource getters
+TOOL_GET_ISSUE = "gitlab_get_issue"
+TOOL_GET_MERGE_REQUEST = "gitlab_get_merge_request"
+TOOL_GET_FILE_CONTENT = "gitlab_get_file_content"
+TOOL_GET_COMMIT = "gitlab_get_commit"
+TOOL_GET_COMMIT_DIFF = "gitlab_get_commit_diff"
+TOOL_GET_MR_APPROVALS = "gitlab_get_merge_request_approvals"
+TOOL_GET_MR_DISCUSSIONS = "gitlab_get_merge_request_discussions"
+TOOL_GET_MR_CHANGES = "gitlab_get_merge_request_changes"
+
+# Search tools
+TOOL_SEARCH_PROJECTS = "gitlab_search_projects"
+TOOL_SEARCH_IN_PROJECT = "gitlab_search_in_project"
+
+# Action-oriented tools
+TOOL_UPDATE_MR = "gitlab_update_merge_request"
+TOOL_CLOSE_MR = "gitlab_close_merge_request"
+TOOL_MERGE_MR = "gitlab_merge_merge_request"
+TOOL_REBASE_MR = "gitlab_rebase_merge_request"
+TOOL_APPROVE_MR = "gitlab_approve_merge_request"
+TOOL_ADD_ISSUE_COMMENT = "gitlab_add_issue_comment"
+TOOL_ADD_MR_COMMENT = "gitlab_add_merge_request_comment"
+TOOL_RESOLVE_DISCUSSION = "gitlab_resolve_discussion"
+TOOL_CREATE_COMMIT = "gitlab_create_commit"
+TOOL_CHERRY_PICK_COMMIT = "gitlab_cherry_pick_commit"
+TOOL_COMPARE_REFS = "gitlab_compare_refs"
+
+# AI and Advanced Tools
+TOOL_SUMMARIZE_MR = "gitlab_summarize_merge_request"
+TOOL_SUMMARIZE_ISSUE = "gitlab_summarize_issue"
+TOOL_SUMMARIZE_PIPELINE = "gitlab_summarize_pipeline"
+TOOL_SMART_DIFF = "gitlab_smart_diff"
+TOOL_SAFE_PREVIEW_COMMIT = "gitlab_safe_preview_commit"
+TOOL_BATCH_OPERATIONS = "gitlab_batch_operations"
