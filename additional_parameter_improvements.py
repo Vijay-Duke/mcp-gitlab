@@ -1,9 +1,9 @@
 """
-Additional parameter improvements based on Atlassian MCP tool review recommendations.
+Additional parameter improvements for GitLab MCP tools.
 These address specific GitLab API parameters that need better examples and guidance.
 """
 
-# Based on Atlassian review recommendations for complex parameters
+# Enhanced parameter documentation for complex GitLab API operations
 ADDITIONAL_PARAMETER_IMPROVEMENTS = {
     
     # For issue and MR creation tools
@@ -232,4 +232,4 @@ INTEGRATION_EXAMPLES = {
 }
 
 print("Additional parameter improvements ready for integration into tool descriptions")
-print("These follow Atlassian MCP review patterns for complex parameter documentation")
+print("These follow proven patterns for complex GitLab API parameter documentation")

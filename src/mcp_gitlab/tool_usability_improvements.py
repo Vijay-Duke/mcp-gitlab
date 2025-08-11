@@ -1,6 +1,6 @@
 """
 Improved tool descriptions for better LLM usability.
-Based on Atlassian MCP tool usability review recommendations.
+Implements proven patterns for MCP tool clarity and disambiguation.
 
 This file contains improved descriptions that make it clearer for LLMs to select 
 the correct tool by reducing ambiguity and providing explicit usage guidance.
@@ -269,7 +269,7 @@ USAGE_GUIDELINES = """
 4. **Use explicit guidance**: Add "Use this tool when..." statements
 5. **Cross-reference related tools**: Help LLMs understand when NOT to use a tool
 
-## Key Principles from Atlassian Review
+## Key Usability Principles
 
 - **Reduce ambiguity**: Make it clear when to use each tool
 - **Provide examples**: Concrete examples help LLMs understand usage
