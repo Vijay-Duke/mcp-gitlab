@@ -39,8 +39,10 @@ Use cases:
 
 Example response: {'id': 123, 'username': 'johndoe', 'name': 'John Doe', ...}"""
 
-DESC_GET_USER = """Get details for a specific user by ID or username
-Retrieves public profile information for any GitLab user.
+DESC_GET_USER = """Get basic profile information for a specific GitLab user by ID or username.
+
+Returns essential user details like name, username, avatar, and public profile info.
+**Use this tool when you have a specific user ID or exact username and need basic profile information.**
 
 Parameters:
 - user_id: Numeric user ID (e.g., 12345)
@@ -48,19 +50,13 @@ Parameters:
 
 Use either user_id OR username, not both.
 
-Returns user information including:
-- Basic info: ID, username, name
-- Profile: avatar_url, web_url, bio
-- Organization details: company, job title
-- Account status and creation date
+Examples:
+- Get user profile for @mentions: get_user(username="johndoe")  
+- Look up user from commit author: get_user(user_id=12345)
+- Display user info in applications
 
-Use cases:
-- Look up user for @mentions
-- Get user info for permissions/assignments
-- Find user details from commits/issues
-- User profile display
-
-Example: user_id=123 OR username='johndoe'"""
+For searching users with partial information, use 'gitlab_search_user' instead.
+For comprehensive user activity and contributions, use user activity tools instead."""
 
 DESC_USER_ID = """User ID (numeric)
 Type: integer
@@ -1994,20 +1990,23 @@ Related tools:
 # USER & PROFILE TOOL DESCRIPTIONS
 # ============================================================================
 
-DESC_SEARCH_USER = """Search for GitLab users by name, username, or email
+DESC_SEARCH_USER = """Search for GitLab users based on partial information or search criteria.
 
-Find users across GitLab instance using flexible search terms.
+This tool is useful when you don't have the exact username or ID, but need to find users 
+based on name, email, or other search terms.
+**Use this tool when you need to find users based on partial information or search queries.**
+
+Examples:
+- Find users by partial name: search_user("John Sm")
+- Search by email domain: search_user("@company.com") 
+- Find users for team assignments
 
 Returns user information including:
 - Basic details: ID, username, name, avatar
 - Public profile information
 - Activity status
 
-Use cases:
-- Find team members for assignments
-- Look up users for collaboration
-- Discover users in organization
-- Validate usernames before mentions
+For getting specific user details when you have exact ID/username, use 'gitlab_get_user' instead.
 
 Parameters:
 - search: Search query (name, username, or email fragment)
@@ -2022,10 +2021,19 @@ Example: Find users named "John"
 }
 ```"""
 
-DESC_GET_USER_DETAILS = """Get comprehensive user profile and metadata
+DESC_GET_USER_DETAILS = """Get comprehensive activity summary and contributions for a specific user.
 
-Retrieve detailed information about a specific user including contributions, 
-activity patterns, and public profile data.
+Returns detailed information about a user's GitLab activity including recent contributions,
+project involvement, and activity statistics.
+**Use this tool when you need detailed insights into a user's GitLab activity and contributions.**
+
+Examples:
+- Performance reviews: get_user_details(user_id=123)
+- Team member activity overview
+- Contributor analysis for projects
+
+For basic user profile info, use 'gitlab_get_user' instead.
+For finding users by search, use 'gitlab_search_user' instead.
 
 Returns extended user information:
 - Profile: name, bio, location, company
