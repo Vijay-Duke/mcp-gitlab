@@ -97,7 +97,7 @@ async def list_projects(client, request):
 
 ### Handler Mapping Pattern (Already Implemented) ✅
 - The project already uses a handler mapping pattern instead of large switch statements
-- This follows the best practice from the mcp-atlassian review
+- This follows modern MCP server best practices
 - Located in `server.py` with clean handler routing
 
 ### Response Sanitization ✅

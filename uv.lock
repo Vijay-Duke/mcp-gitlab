@@ -439,6 +439,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "python-gitlab" },
     { name = "python-json-logger" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
 
 [package.optional-dependencies]
@@ -472,6 +473,7 @@ requires-dist = [
     { name = "python-gitlab", specifier = ">=4.0.0" },
     { name = "python-json-logger", specifier = ">=2.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0.0" },
 ]
 provides-extras = ["test", "dev"]
 

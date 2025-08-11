@@ -1,6 +1,6 @@
 # GitLab MCP Tool Usability Improvements
 
-This document outlines the usability improvements applied to the GitLab MCP server tools based on the Atlassian MCP tool review recommendations. These changes improve tool clarity and make it easier for Large Language Models (LLMs) to select the correct tool for a given task.
+This document outlines the usability improvements applied to the GitLab MCP server tools following proven patterns for MCP tool clarity. These changes improve tool clarity and make it easier for Large Language Models (LLMs) to select the correct tool for a given task.
 
 ## 🎯 Key Objectives
 
@@ -287,7 +287,7 @@ For [alternative use case], use '[alternative_tool]' instead.
 
 ## 🚀 Future Enhancements
 
-Based on the Atlassian review, potential future improvements:
+Based on usability best practices, potential future improvements:
 
 1. **Schema Validation**: Add runtime validation for complex parameters
 2. **Tool Categorization**: Group related tools in the UI/documentation
