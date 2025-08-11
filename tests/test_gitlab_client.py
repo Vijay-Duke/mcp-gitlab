@@ -778,3 +778,62 @@ class TestGitLabClient:
         """Test get_user raises error when no params provided"""
         with pytest.raises(ValueError, match="Either user_id or username must be provided"):
             client.get_user()
+
+    @pytest.mark.unit
+    def test_smart_diff(self, client):
+        """Test smart diff functionality"""
+        # Mock project and comparison
+        mock_project = Mock()
+        mock_comparison = {
+            "diffs": [
+                {
+                    "old_path": "file.py",
+                    "new_path": "file.py",
+                    "diff": "--- a/file.py\n+++ b/file.py\n@@ -1,1 +1,1 @@\n-old\n+new",
+                    "new_file": False,
+                    "renamed_file": False,
+                    "deleted_file": False,
+                    "a_mode": "100644",
+                    "b_mode": "100644",
+                },
+                {
+                    "old_path": "large_file.py",
+                    "new_path": "large_file.py",
+                    "diff": "a\n" * 60000,
+                    "new_file": False,
+                    "renamed_file": False,
+                    "deleted_file": False,
+                }
+            ],
+            "commits": [
+                {
+                    "id": "commit1",
+                    "short_id": "c1",
+                    "title": "Commit 1",
+                    "author_name": "user1"
+                }
+            ]
+        }
+
+        mock_project.repository_compare.return_value = mock_comparison
+        client.gl.projects.get.return_value = mock_project
+
+        result = client.smart_diff("project-id", "main", "feature", max_file_size=50000)
+
+        client.gl.projects.get.assert_called_once_with("project-id")
+        mock_project.repository_compare.assert_called_once_with("main", "feature")
+
+        assert "diffs" in result
+        assert len(result["diffs"]) == 2
+
+        # Check normal diff
+        assert result["diffs"][0]["new_path"] == "file.py"
+        assert "--- a/file.py" in result["diffs"][0]["diff"]
+
+        # Check large file diff
+        assert result["diffs"][1]["new_path"] == "large_file.py"
+        assert "File too large" in result["diffs"][1]["diff"]
+
+        assert "commits" in result
+        assert len(result["commits"]) == 1
+        assert result["commits"][0]["id"] == "commit1"

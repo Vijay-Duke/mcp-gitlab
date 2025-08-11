@@ -1001,6 +1001,273 @@ class GitLabClient:
             "scope": scope,
         }
 
+    # ------------------------------------------------------------------
+    # Commit and Diff Methods
+    # ------------------------------------------------------------------
+    def get_commits(self, project_id: str, ref_name: Optional[str] = None,
+                   since: Optional[str] = None, until: Optional[str] = None,
+                   path: Optional[str] = None, per_page: int = DEFAULT_PAGE_SIZE,
+                   page: int = 1) -> Dict[str, Any]:
+        """Get list of commits for a project"""
+        try:
+            project = self.gl.projects.get(project_id)
+            commits = project.commits.list(
+                ref_name=ref_name,
+                since=since,
+                until=until,
+                path=path,
+                per_page=per_page,
+                page=page,
+                get_all=False
+            )
+
+            return {
+                "commits": [
+                    {
+                        "id": commit.id,
+                        "short_id": commit.short_id,
+                        "title": commit.title,
+                        "message": commit.message,
+                        "author_name": commit.author_name,
+                        "author_email": commit.author_email,
+                        "authored_date": commit.authored_date,
+                        "committer_name": commit.committer_name,
+                        "committer_email": commit.committer_email,
+                        "committed_date": commit.committed_date,
+                        "created_at": commit.created_at,
+                        "parent_ids": commit.parent_ids,
+                        "web_url": commit.web_url
+                    }
+                    for commit in commits
+                ]
+            }
+        except gitlab.exceptions.GitlabGetError as e:
+            return {"error": f"Failed to get commits: {str(e)}"}
+
+    def get_commit(self, project_id: str, commit_sha: str, include_stats: bool = False) -> Dict[str, Any]:
+        """Get details of a specific commit"""
+        try:
+            project = self.gl.projects.get(project_id)
+            commit = project.commits.get(commit_sha, stats=include_stats)
+
+            result = {
+                "id": commit.id,
+                "short_id": commit.short_id,
+                "title": commit.title,
+                "message": commit.message,
+                "author_name": commit.author_name,
+                "author_email": commit.author_email,
+                "authored_date": commit.authored_date,
+                "committer_name": commit.committer_name,
+                "committer_email": commit.committer_email,
+                "committed_date": commit.committed_date,
+                "created_at": commit.created_at,
+                "parent_ids": commit.parent_ids,
+                "web_url": commit.web_url
+            }
+
+            if include_stats and hasattr(commit, 'stats'):
+                result["stats"] = commit.stats
+
+            return result
+        except gitlab.exceptions.GitlabGetError as e:
+            return {"error": f"Failed to get commit: {str(e)}"}
+
+    def get_commit_diff(self, project_id: str, commit_sha: str) -> Dict[str, Any]:
+        """Get the diff of a specific commit"""
+        try:
+            project = self.gl.projects.get(project_id)
+            commit = project.commits.get(commit_sha)
+            diff = commit.diff()
+
+            return {
+                "commit_sha": commit_sha,
+                "diff": diff
+            }
+        except gitlab.exceptions.GitlabGetError as e:
+            return {"error": f"Failed to get commit diff: {str(e)}"}
+
+    def create_commit(self, project_id: str, branch: str, commit_message: str,
+                     actions: List[Dict[str, Any]], author_email: Optional[str] = None,
+                     author_name: Optional[str] = None) -> Dict[str, Any]:
+        """Create a new commit with file changes"""
+        try:
+            project = self.gl.projects.get(project_id)
+
+            commit_data = {
+                "branch": branch,
+                "commit_message": commit_message,
+                "actions": actions
+            }
+
+            if author_email:
+                commit_data["author_email"] = author_email
+            if author_name:
+                commit_data["author_name"] = author_name
+
+            commit = project.commits.create(commit_data)
+
+            return {
+                "id": commit.id,
+                "short_id": commit.short_id,
+                "title": commit.title,
+                "message": commit.message,
+                "author_name": commit.author_name,
+                "author_email": commit.author_email,
+                "created_at": commit.created_at,
+                "parent_ids": commit.parent_ids,
+                "web_url": commit.web_url
+            }
+        except gitlab.exceptions.GitlabCreateError as e:
+            return {"error": f"Failed to create commit: {str(e)}"}
+
+    def compare_refs(self, project_id: str, from_ref: str, to_ref: str, straight: bool = False) -> Dict[str, Any]:
+        """Compare two refs (branches, tags, or commits)"""
+        try:
+            project = self.gl.projects.get(project_id)
+            comparison = project.repository_compare(from_ref, to_ref, straight=straight)
+
+            return {
+                "commits": [
+                    {
+                        "id": commit["id"],
+                        "short_id": commit.get("short_id"),
+                        "title": commit.get("title"),
+                        "message": commit.get("message"),
+                        "author_name": commit.get("author_name"),
+                        "created_at": commit.get("created_at")
+                    }
+                    for commit in comparison.get("commits", [])
+                ],
+                "diffs": comparison.get("diffs", []),
+                "compare_timeout": comparison.get("compare_timeout", False),
+                "compare_same_ref": comparison.get("compare_same_ref", False)
+            }
+        except Exception as e:
+            return {"error": f"Failed to compare refs: {str(e)}"}
+
+    def cherry_pick_commit(self, project_id: str, commit_sha: str, branch: str) -> Dict[str, Any]:
+        """Cherry pick a commit to another branch"""
+        try:
+            project = self.gl.projects.get(project_id)
+            commit = project.commits.get(commit_sha)
+            cherry_picked = commit.cherry_pick(branch)
+
+            return {
+                "id": cherry_picked.get("id"),
+                "short_id": cherry_picked.get("short_id"),
+                "title": cherry_picked.get("title"),
+                "message": cherry_picked.get("message"),
+                "author_name": cherry_picked.get("author_name"),
+                "created_at": cherry_picked.get("created_at"),
+                "parent_ids": cherry_picked.get("parent_ids"),
+                "web_url": cherry_picked.get("web_url")
+            }
+        except Exception as e:
+            return {"error": f"Failed to cherry pick commit: {str(e)}"}
+
+    def smart_diff(self, project_id: str, from_ref: str, to_ref: str,
+                  context_lines: int = 3, max_file_size: int = 50000) -> Dict[str, Any]:
+        """Get a smart diff between two refs with configurable context"""
+        try:
+            project = self.gl.projects.get(project_id)
+            comparison = project.repository_compare(from_ref, to_ref)
+
+            diffs = []
+            for diff in comparison.get("diffs", []):
+                # Skip files that are too large
+                if diff.get("diff", "").count("\n") > max_file_size:
+                    diffs.append({
+                        "old_path": diff.get("old_path"),
+                        "new_path": diff.get("new_path"),
+                        "diff": f"File too large (>{max_file_size} lines)",
+                        "new_file": diff.get("new_file", False),
+                        "renamed_file": diff.get("renamed_file", False),
+                        "deleted_file": diff.get("deleted_file", False)
+                    })
+                else:
+                    diffs.append({
+                        "old_path": diff.get("old_path"),
+                        "new_path": diff.get("new_path"),
+                        "diff": diff.get("diff"),
+                        "new_file": diff.get("new_file", False),
+                        "renamed_file": diff.get("renamed_file", False),
+                        "deleted_file": diff.get("deleted_file", False),
+                        "a_mode": diff.get("a_mode"),
+                        "b_mode": diff.get("b_mode")
+                    })
+
+            return {
+                "from_ref": from_ref,
+                "to_ref": to_ref,
+                "context_lines": context_lines,
+                "diffs": diffs,
+                "commits": [
+                    {
+                        "id": commit["id"],
+                        "short_id": commit.get("short_id"),
+                        "title": commit.get("title"),
+                        "author_name": commit.get("author_name")
+                    }
+                    for commit in comparison.get("commits", [])
+                ]
+            }
+        except Exception as e:
+            return {"error": f"Failed to get smart diff: {str(e)}"}
+
+    def safe_preview_commit(self, project_id: str, branch: str, commit_message: str,
+                           actions: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Preview what a commit would do without actually creating it"""
+        try:
+            project = self.gl.projects.get(project_id)
+
+            # Validate branch exists
+            try:
+                project.branches.get(branch)
+            except gitlab.exceptions.GitlabGetError:
+                return {"error": f"Branch '{branch}' does not exist"}
+
+            # Validate actions
+            preview_results = []
+            for action in actions:
+                action_type = action.get("action")
+                file_path = action.get("file_path")
+
+                result = {
+                    "action": action_type,
+                    "file_path": file_path,
+                    "valid": True,
+                    "message": "OK"
+                }
+
+                # Check if file exists for update/delete actions
+                if action_type in ["update", "delete"]:
+                    try:
+                        project.files.get(file_path, ref=branch)
+                    except gitlab.exceptions.GitlabGetError:
+                        result["valid"] = False
+                        result["message"] = f"File '{file_path}' does not exist"
+
+                # Check if file doesn't exist for create actions
+                elif action_type == "create":
+                    try:
+                        project.files.get(file_path, ref=branch)
+                        result["valid"] = False
+                        result["message"] = f"File '{file_path}' already exists"
+                    except gitlab.exceptions.GitlabGetError:
+                        pass  # File doesn't exist, which is expected
+
+                preview_results.append(result)
+
+            return {
+                "branch": branch,
+                "commit_message": commit_message,
+                "preview_results": preview_results,
+                "valid": all(r["valid"] for r in preview_results)
+            }
+        except Exception as e:
+            return {"error": f"Failed to preview commit: {str(e)}"}
+
     @retry_on_error()
     def summarize_issue(self, project_id: str, issue_iid: int, max_length: int = 500) -> Dict[str, Any]:
         """Generate an AI-friendly summary of an issue.
