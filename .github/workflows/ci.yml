@@ -170,6 +170,32 @@ jobs:
           uv pip install twine
           twine check dist/*
           
+      - name: Validate package size
+        run: |
+          # Check wheel size (should be reasonable for an MCP server)
+          wheel_size=$(find dist/ -name "*.whl" -exec ls -la {} \; | awk '{print $5}')
+          max_size=10485760  # 10MB in bytes
+          
+          if [ "$wheel_size" -gt "$max_size" ]; then
+            echo "❌ Package size too large: $(( wheel_size / 1024 / 1024 ))MB (max: 10MB)"
+            echo "Consider excluding unnecessary files or reducing dependencies"
+            exit 1
+          else
+            echo "✅ Package size acceptable: $(( wheel_size / 1024 / 1024 ))MB"
+          fi
+          
+          # List package contents for transparency
+          echo "📦 Package contents:"
+          python -c "
+          import zipfile
+          import glob
+          wheel_files = glob.glob('dist/*.whl')
+          if wheel_files:
+              with zipfile.ZipFile(wheel_files[0], 'r') as zf:
+                  for info in sorted(zf.infolist(), key=lambda x: x.file_size, reverse=True)[:20]:
+                      print(f'{info.file_size:>8} bytes  {info.filename}')
+          "
+          
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:

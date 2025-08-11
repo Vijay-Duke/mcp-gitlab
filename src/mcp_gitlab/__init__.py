@@ -13,7 +13,7 @@ except Exception:
     GitLabClient = None
     GitLabConfig = None
 
-__version__ = "0.1.0"
+from .version import __version__
 __all__ = ["GitLabClient", "GitLabConfig"]
 
 try:  # pragma: no cover - exercised implicitly during import
