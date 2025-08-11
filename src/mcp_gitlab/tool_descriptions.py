@@ -2228,7 +2228,9 @@ Example: Get high priority review requests
 }
 ```"""
 
-DESC_GET_USER_OPEN_ISSUES = """Get open issues assigned to a user, prioritized by severity/SLA
+DESC_GET_USER_OPEN_ISSUES = """List open issues assigned to or created by a specific user.
+
+**Use this tool to see what issues a user is currently working on or responsible for.**
 
 Retrieve all currently open issues assigned to the specified user across
 all accessible projects, with intelligent priority sorting.
@@ -2264,10 +2266,20 @@ Example: Get overdue issues for user
 }
 ```"""
 
-DESC_GET_USER_REPORTED_ISSUES = """Get issues reported/created by a user
+DESC_GET_USER_REPORTED_ISSUES = """List all issues created/reported by a specific user (including closed ones).
+
+Shows issues where the user is the original reporter/creator.
+**Use this tool to see what problems or requests a user has reported.**
+
+Examples:
+- Bug reporting patterns: get_user_reported_issues(user_id=123)
+- User feedback analysis
+- Historical issue creation
 
 Find all issues originally created by the specified user across all
 accessible projects, with current status and resolution tracking.
+
+For issues currently assigned to a user, use 'gitlab_get_user_open_issues' instead.
 
 Returns reported issues with:
 - Issue details: title, description, current state
@@ -2344,7 +2356,17 @@ Example: Get issues resolved this quarter
 # USER'S CODE & COMMITS TOOL DESCRIPTIONS
 # ============================================================================
 
-DESC_GET_USER_COMMITS = """Get commits authored by a user within date range or branch
+DESC_GET_USER_COMMITS = """List all commits authored by a specific user across projects or within a project.
+
+Shows commits where the user is the author (wrote the code).
+**Use this tool to see what code changes a user has authored.**
+
+Examples:
+- Code contribution analysis: get_user_commits(user_id=123)
+- Developer productivity metrics
+- Code review preparation
+
+For merge commits specifically, use 'gitlab_get_user_merge_commits' instead.
 
 Retrieve all commits authored by the specified user with flexible filtering
 by time period, branch, or project scope.
@@ -2384,7 +2406,17 @@ Example: Get user commits from main branch last month
 }
 ```"""
 
-DESC_GET_USER_MERGE_COMMITS = """Get commits from merge requests authored by a user
+DESC_GET_USER_MERGE_COMMITS = """List merge commits where a specific user performed the merge.
+
+Shows commits where the user merged branches (not necessarily the code author).
+**Use this tool to see what merges a user has performed, useful for release management.**
+
+Examples:
+- Release management: get_user_merge_commits(user_id=123)
+- Merge activity tracking
+- Integration oversight
+
+For all commits authored by user, use 'gitlab_get_user_commits' instead.
 
 Find all commits that originated from merge requests created by the 
 specified user, tracking their integrated contributions.
