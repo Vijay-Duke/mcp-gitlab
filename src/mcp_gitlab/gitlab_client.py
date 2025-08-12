@@ -2581,6 +2581,13 @@ class GitLabClient:
                              since: Optional[str] = None, until: Optional[str] = None,
                              per_page: int = DEFAULT_PAGE_SIZE, page: int = 1) -> Dict[str, Any]:
         """Get merge commits authored by a user"""
+        # Auto-detect project if not provided
+        if not project_id:
+            detected = self.get_project_from_git(".")
+            if not detected:
+                raise ValueError("No project_id provided and could not detect project from git context")
+            project_id = detected["id"]
+        
         project = self._get_project(project_id)
         
         # Get commits by user
@@ -2646,6 +2653,13 @@ class GitLabClient:
                                     since: Optional[str] = None, until: Optional[str] = None,
                                     per_page: int = DEFAULT_PAGE_SIZE) -> Dict[str, Any]:
         """Get a summary of code changes made by a user"""
+        # Auto-detect project if not provided
+        if not project_id:
+            detected = self.get_project_from_git(".")
+            if not detected:
+                raise ValueError("No project_id provided and could not detect project from git context")
+            project_id = detected["id"]
+            
         project = self._get_project(project_id)
         
         # Get commits by user
