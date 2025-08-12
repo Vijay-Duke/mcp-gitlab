@@ -83,3 +83,9 @@ pip-delete-this-directory.txt
 # Local development
 *.local
 .history/
+
+# Development tools and metadata
+.agent-os/
+.claude-flow/
+.swarm/
+.claude/
