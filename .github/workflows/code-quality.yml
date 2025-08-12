@@ -54,6 +54,8 @@ jobs:
   complexity:
     name: Code Complexity Analysis
     runs-on: ubuntu-latest
+    env:
+      UV_SYSTEM_PYTHON: 1
     steps:
       - uses: actions/checkout@v4
       
@@ -69,7 +71,7 @@ jobs:
           
       - name: Install analysis tools
         run: |
-          uv pip install --system radon xenon flake8 flake8-cognitive-complexity
+          uv pip install radon xenon flake8 flake8-cognitive-complexity
           
       - name: Cyclomatic Complexity
         run: |
