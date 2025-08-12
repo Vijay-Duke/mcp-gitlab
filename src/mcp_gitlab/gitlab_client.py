@@ -2581,65 +2581,70 @@ class GitLabClient:
                              since: Optional[str] = None, until: Optional[str] = None,
                              per_page: int = DEFAULT_PAGE_SIZE, page: int = 1) -> Dict[str, Any]:
         """Get merge commits authored by a user"""
-        # Auto-detect project if not provided
-        if not project_id:
-            detected = self.get_project_from_git(".")
-            if not detected:
-                raise ValueError("No project_id provided and could not detect project from git context")
-            project_id = detected["id"]
+        if project_id:
+            projects = [self._get_project(project_id)]
+        else:
+            # Get all accessible projects (limited search)
+            projects = self.gl.projects.list(membership=True, get_all=False, per_page=20)
         
-        project = self._get_project(project_id)
+        all_merge_commits = []
         
-        # Get commits by user
-        kwargs = {
-            "author": username,
-            "get_all": False,
-            "per_page": min(per_page, MAX_PAGE_SIZE),
-            "page": page,
-        }
-        if since:
-            kwargs["since"] = since
-        if until:
-            kwargs["until"] = until
-            
-        response = project.commits.list(**kwargs)
-        
-        # Filter for merge commits only
-        merge_commits = []
-        for commit in response:
+        for project in projects:
             try:
-                commit_detail = project.commits.get(getattr(commit, "id", None))
-                parent_ids = getattr(commit_detail, 'parent_ids', [])
+                # Get commits by user
+                kwargs = {
+                    "author": username,
+                    "get_all": False,
+                    "per_page": min(per_page, MAX_PAGE_SIZE),
+                    "page": page,
+                }
+                if since:
+                    kwargs["since"] = since
+                if until:
+                    kwargs["until"] = until
+                    
+                response = project.commits.list(**kwargs)
                 
-                # Only include if it's a merge commit (has multiple parents)
-                if len(parent_ids) > 1:
-                    commit_data = {
-                        "id": getattr(commit, "id", None),
-                        "short_id": getattr(commit, "short_id", None),
-                        "title": getattr(commit, "title", None),
-                        "message": getattr(commit, "message", None),
-                        "author_name": getattr(commit, "author_name", None),
-                        "author_email": getattr(commit, "author_email", None),
-                        "authored_date": getattr(commit, "authored_date", None),
-                        "committer_name": getattr(commit, "committer_name", None),
-                        "committer_email": getattr(commit, "committer_email", None),
-                        "committed_date": getattr(commit, "committed_date", None),
-                        "created_at": getattr(commit, "created_at", None),
-                        "web_url": getattr(commit, "web_url", None),
-                        "parent_ids": parent_ids,
-                        "parent_count": len(parent_ids)
-                    }
-                    merge_commits.append(commit_data)
+                # Filter for merge commits only
+                for commit in response:
+                    try:
+                        commit_detail = project.commits.get(getattr(commit, "id", None))
+                        parent_ids = getattr(commit_detail, 'parent_ids', [])
+                        
+                        # Only include if it's a merge commit (has multiple parents)
+                        if len(parent_ids) > 1:
+                            commit_data = {
+                                "id": getattr(commit, "id", None),
+                                "short_id": getattr(commit, "short_id", None),
+                                "title": getattr(commit, "title", None),
+                                "message": getattr(commit, "message", None),
+                                "author_name": getattr(commit, "author_name", None),
+                                "author_email": getattr(commit, "author_email", None),
+                                "authored_date": getattr(commit, "authored_date", None),
+                                "committer_name": getattr(commit, "committer_name", None),
+                                "committer_email": getattr(commit, "committer_email", None),
+                                "committed_date": getattr(commit, "committed_date", None),
+                                "created_at": getattr(commit, "created_at", None),
+                                "web_url": getattr(commit, "web_url", None),
+                                "parent_ids": parent_ids,
+                                "parent_count": len(parent_ids),
+                                "project_id": getattr(project, "id", None),
+                                "project_name": getattr(project, "name", None)
+                            }
+                            all_merge_commits.append(commit_data)
+                    except Exception:
+                        # Skip commits we can't access
+                        continue
             except Exception:
-                # Skip commits we can't access
+                # Skip projects we can't access
                 continue
         
         user_info = self._get_user_info(username)
         
         return {
             "user": user_info,
-            "merge_commits": merge_commits,
-            "total_count": len(merge_commits),
+            "merge_commits": all_merge_commits,
+            "total_count": len(all_merge_commits),
             "filters": {
                 "username": username,
                 "project_id": project_id,
@@ -2653,60 +2658,64 @@ class GitLabClient:
                                     since: Optional[str] = None, until: Optional[str] = None,
                                     per_page: int = DEFAULT_PAGE_SIZE) -> Dict[str, Any]:
         """Get a summary of code changes made by a user"""
-        # Auto-detect project if not provided
-        if not project_id:
-            detected = self.get_project_from_git(".")
-            if not detected:
-                raise ValueError("No project_id provided and could not detect project from git context")
-            project_id = detected["id"]
-            
-        project = self._get_project(project_id)
+        if project_id:
+            projects = [self._get_project(project_id)]
+        else:
+            # Get all accessible projects (limited search)
+            projects = self.gl.projects.list(membership=True, get_all=False, per_page=20)
         
-        # Get commits by user
-        kwargs = {
-            "author": username,
-            "get_all": False,
-            "per_page": min(per_page, MAX_PAGE_SIZE),
-            "with_stats": True,
-        }
-        if since:
-            kwargs["since"] = since
-        if until:
-            kwargs["until"] = until
-            
-        response = project.commits.list(**kwargs)
-        
-        # Aggregate statistics
+        all_commits = []
         total_additions = 0
         total_deletions = 0
-        total_commits = len(response)
-        files_changed = set()
         
-        commits_data = []
-        for commit in response:
+        for project in projects:
             try:
-                commit_detail = project.commits.get(getattr(commit, "id", None))
-                stats = getattr(commit_detail, 'stats', {})
-                additions = stats.get('additions', 0)
-                deletions = stats.get('deletions', 0)
+                # Get commits by user
+                kwargs = {
+                    "author": username,
+                    "get_all": False,
+                    "per_page": min(per_page, MAX_PAGE_SIZE),
+                    "with_stats": True,
+                }
+                if since:
+                    kwargs["since"] = since
+                if until:
+                    kwargs["until"] = until
+                    
+                response = project.commits.list(**kwargs)
                 
-                total_additions += additions
-                total_deletions += deletions
-                
-                commits_data.append({
-                    "id": getattr(commit, "id", None),
-                    "short_id": getattr(commit, "short_id", None),
-                    "title": getattr(commit, "title", None),
-                    "authored_date": getattr(commit, "authored_date", None),
-                    "additions": additions,
-                    "deletions": deletions,
-                    "total_changes": additions + deletions,
-                })
+                # Process commits from this project
+                for commit in response:
+                    try:
+                        commit_detail = project.commits.get(getattr(commit, "id", None))
+                        stats = getattr(commit_detail, 'stats', {})
+                        additions = stats.get('additions', 0)
+                        deletions = stats.get('deletions', 0)
+                        
+                        total_additions += additions
+                        total_deletions += deletions
+                        
+                        commit_data = {
+                            "id": getattr(commit, "id", None),
+                            "short_id": getattr(commit, "short_id", None),
+                            "title": getattr(commit, "title", None),
+                            "authored_date": getattr(commit, "authored_date", None),
+                            "additions": additions,
+                            "deletions": deletions,
+                            "total_changes": additions + deletions,
+                            "project_id": getattr(project, "id", None),
+                            "project_name": getattr(project, "name", None)
+                        }
+                        all_commits.append(commit_data)
+                    except Exception:
+                        # Skip commits we can't get details for
+                        continue
             except Exception:
-                # Skip commits we can't get details for
+                # Skip projects we can't access
                 continue
         
         user_info = self._get_user_info(username)
+        total_commits = len(all_commits)
         
         return {
             "user": user_info,
@@ -2717,7 +2726,7 @@ class GitLabClient:
                 "total_changes": total_additions + total_deletions,
                 "average_changes_per_commit": round((total_additions + total_deletions) / max(total_commits, 1), 2)
             },
-            "commits": commits_data,
+            "commits": all_commits,
             "filters": {
                 "project_id": project_id,
                 "since": since,
