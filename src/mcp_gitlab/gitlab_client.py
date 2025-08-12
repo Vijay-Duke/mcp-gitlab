@@ -325,6 +325,301 @@ class GitLabClient:
         }
         return {"notes": notes, "pagination": pagination, "merge_request": merge_request}
 
+    # Merge Request Action Methods
+    @retry_on_error()
+    def update_merge_request(self, project_id: str, mr_iid: int, **kwargs) -> Dict[str, Any]:
+        """Update a merge request.
+        
+        Args:
+            project_id: The ID or path of the project
+            mr_iid: The IID of the merge request
+            **kwargs: Fields to update (title, description, state_event, etc.)
+            
+        Returns:
+            Dict with updated merge request data
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            mr = project.mergerequests.get(mr_iid)
+            mr.save(**kwargs)
+            return self._mr_to_dict(mr)
+        except gitlab.exceptions.GitlabUpdateError as e:
+            return {"error": f"Failed to update merge request: {str(e)}"}
+    
+    @retry_on_error()
+    def close_merge_request(self, project_id: str, mr_iid: int) -> Dict[str, Any]:
+        """Close a merge request.
+        
+        Args:
+            project_id: The ID or path of the project
+            mr_iid: The IID of the merge request
+            
+        Returns:
+            Dict with closure status
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            mr = project.mergerequests.get(mr_iid)
+            mr.state_event = "close"
+            mr.save()
+            return {
+                "success": True,
+                "message": f"Merge request !{mr_iid} closed successfully",
+                "mr_iid": mr_iid,
+                "state": "closed"
+            }
+        except gitlab.exceptions.GitlabUpdateError as e:
+            return {"error": f"Failed to close merge request: {str(e)}"}
+    
+    @retry_on_error()
+    def merge_merge_request(self, project_id: str, mr_iid: int, 
+                           merge_commit_message: Optional[str] = None,
+                           squash: bool = False,
+                           should_remove_source_branch: bool = False) -> Dict[str, Any]:
+        """Merge a merge request.
+        
+        Args:
+            project_id: The ID or path of the project
+            mr_iid: The IID of the merge request
+            merge_commit_message: Optional custom merge commit message
+            squash: Whether to squash commits
+            should_remove_source_branch: Whether to remove source branch after merge
+            
+        Returns:
+            Dict with merge status
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            mr = project.mergerequests.get(mr_iid)
+            
+            kwargs = {}
+            if merge_commit_message:
+                kwargs["merge_commit_message"] = merge_commit_message
+            if squash:
+                kwargs["squash"] = squash
+            if should_remove_source_branch:
+                kwargs["should_remove_source_branch"] = should_remove_source_branch
+            
+            mr.merge(**kwargs)
+            return {
+                "success": True,
+                "message": f"Merge request !{mr_iid} merged successfully",
+                "mr_iid": mr_iid,
+                "state": "merged"
+            }
+        except gitlab.exceptions.GitlabUpdateError as e:
+            return {"error": f"Failed to merge request: {str(e)}"}
+        except Exception as e:
+            return {"error": f"Merge failed: {str(e)}"}
+    
+    @retry_on_error()
+    def rebase_merge_request(self, project_id: str, mr_iid: int) -> Dict[str, Any]:
+        """Rebase a merge request to the latest target branch.
+        
+        Args:
+            project_id: The ID or path of the project
+            mr_iid: The IID of the merge request
+            
+        Returns:
+            Dict with rebase status
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            mr = project.mergerequests.get(mr_iid)
+            mr.rebase()
+            return {
+                "success": True,
+                "message": f"Merge request !{mr_iid} rebased successfully",
+                "mr_iid": mr_iid,
+                "project_id": project_id
+            }
+        except gitlab.exceptions.GitlabUpdateError as e:
+            return {"error": f"Failed to rebase merge request: {str(e)}"}
+        except gitlab.exceptions.GitlabHttpError as e:
+            return {"error": f"Rebase failed: {str(e)}"}
+        except Exception as e:
+            return {"error": f"Rebase failed: {str(e)}"}
+    
+    @retry_on_error()
+    def add_merge_request_comment(self, project_id: str, mr_iid: int, body: str) -> Dict[str, Any]:
+        """Add a comment to a merge request.
+        
+        Args:
+            project_id: The ID or path of the project
+            mr_iid: The IID of the merge request
+            body: The comment text
+            
+        Returns:
+            Dict with the created comment
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            mr = project.mergerequests.get(mr_iid)
+            note = mr.notes.create({"body": body})
+            return self._note_to_dict(note, max_body_length=None)
+        except gitlab.exceptions.GitlabCreateError as e:
+            return {"error": f"Failed to add comment: {str(e)}"}
+    
+    @retry_on_error()
+    def resolve_discussion(self, project_id: str, mr_iid: int, discussion_id: str) -> Dict[str, Any]:
+        """Resolve a discussion thread on a merge request.
+        
+        Args:
+            project_id: The ID or path of the project
+            mr_iid: The IID of the merge request
+            discussion_id: The ID of the discussion to resolve
+            
+        Returns:
+            Dict with resolution status
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            mr = project.mergerequests.get(mr_iid)
+            discussion = mr.discussions.get(discussion_id)
+            discussion.resolved = True
+            discussion.save()
+            return {
+                "success": True,
+                "message": f"Discussion {discussion_id} resolved successfully",
+                "discussion_id": discussion_id,
+                "resolved": True
+            }
+        except gitlab.exceptions.GitlabUpdateError as e:
+            return {"error": f"Failed to resolve discussion: {str(e)}"}
+        except Exception as e:
+            return {"error": f"Resolution failed: {str(e)}"}
+    
+    @retry_on_error()
+    def approve_merge_request(self, project_id: str, mr_iid: int) -> Dict[str, Any]:
+        """Approve a merge request.
+        
+        Args:
+            project_id: The ID or path of the project
+            mr_iid: The IID of the merge request
+            
+        Returns:
+            Dict with approval status
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            mr = project.mergerequests.get(mr_iid)
+            approval = mr.approve()
+            return {
+                "success": True,
+                "message": f"Merge request !{mr_iid} approved successfully",
+                "mr_iid": mr_iid,
+                "project_id": project_id,
+                "approved_by": getattr(approval, "user", {})
+            }
+        except gitlab.exceptions.GitlabUpdateError as e:
+            return {"error": f"Failed to approve merge request: {str(e)}"}
+        except gitlab.exceptions.GitlabHttpError as e:
+            return {"error": f"Approval failed: {str(e)}"}
+        except Exception as e:
+            return {"error": f"Approval failed: {str(e)}"}
+    
+    # Issue Action Methods
+    @retry_on_error()
+    def add_issue_comment(self, project_id: str, issue_iid: int, body: str) -> Dict[str, Any]:
+        """Add a comment to an issue.
+        
+        Args:
+            project_id: The ID or path of the project
+            issue_iid: The IID of the issue
+            body: The comment text
+            
+        Returns:
+            Dict with the created comment
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            issue = project.issues.get(issue_iid)
+            note = issue.notes.create({"body": body})
+            return self._note_to_dict(note, max_body_length=None)
+        except gitlab.exceptions.GitlabCreateError as e:
+            return {"error": f"Failed to add comment: {str(e)}"}
+    
+    # Project Management Methods
+    @retry_on_error()
+    def get_project_members(self, project_id: str, query: Optional[str] = None,
+                           per_page: int = DEFAULT_PAGE_SIZE, page: int = 1) -> Dict[str, Any]:
+        """Get project members.
+        
+        Args:
+            project_id: The ID or path of the project
+            query: Optional search query for member names
+            per_page: Number of items per page
+            page: Page number
+            
+        Returns:
+            Dict containing project members
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            kwargs = {"get_all": False, "per_page": per_page, "page": page}
+            if query:
+                kwargs["query"] = query
+            
+            members = project.members.list(**kwargs)
+            
+            return {
+                "members": [
+                    {
+                        "id": getattr(m, "id", None),
+                        "username": getattr(m, "username", None),
+                        "name": getattr(m, "name", None),
+                        "state": getattr(m, "state", None),
+                        "access_level": getattr(m, "access_level", None),
+                        "expires_at": getattr(m, "expires_at", None),
+                        "avatar_url": getattr(m, "avatar_url", None),
+                        "web_url": getattr(m, "web_url", None),
+                    }
+                    for m in members
+                ],
+                "pagination": {
+                    "page": page,
+                    "per_page": per_page,
+                    "total": getattr(members, "total", None),
+                    "total_pages": getattr(members, "total_pages", None),
+                }
+            }
+        except gitlab.exceptions.GitlabGetError as e:
+            return {"error": f"Failed to get project members: {str(e)}"}
+    
+    @retry_on_error()
+    def get_project_hooks(self, project_id: str) -> List[Dict[str, Any]]:
+        """Get project webhooks.
+        
+        Args:
+            project_id: The ID or path of the project
+            
+        Returns:
+            List of project webhooks
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            hooks = project.hooks.list(get_all=True)
+            
+            return [
+                {
+                    "id": getattr(h, "id", None),
+                    "url": getattr(h, "url", None),
+                    "created_at": getattr(h, "created_at", None),
+                    "push_events": getattr(h, "push_events", False),
+                    "tag_push_events": getattr(h, "tag_push_events", False),
+                    "merge_requests_events": getattr(h, "merge_requests_events", False),
+                    "wiki_page_events": getattr(h, "wiki_page_events", False),
+                    "issues_events": getattr(h, "issues_events", False),
+                    "note_events": getattr(h, "note_events", False),
+                    "pipeline_events": getattr(h, "pipeline_events", False),
+                    "job_events": getattr(h, "job_events", False),
+                    "enable_ssl_verification": getattr(h, "enable_ssl_verification", True),
+                }
+                for h in hooks
+            ]
+        except gitlab.exceptions.GitlabGetError as e:
+            return [{"error": f"Failed to get project hooks: {str(e)}"}]
+    
     @retry_on_error()
     def get_pipelines(
         self, project_id: str, ref: Optional[str] = None, per_page: int = SMALL_PAGE_SIZE
