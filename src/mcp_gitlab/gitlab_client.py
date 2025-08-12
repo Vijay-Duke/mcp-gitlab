@@ -287,6 +287,142 @@ class GitLabClient:
         return self._mr_to_dict(mr)
 
     @retry_on_error()
+    def get_merge_request_approvals(self, project_id: str, mr_iid: int) -> Dict[str, Any]:
+        """Get approval status and details for a merge request.
+        
+        Args:
+            project_id: The ID or path of the project
+            mr_iid: The IID of the merge request
+            
+        Returns:
+            Dict containing approval information
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            mr = project.mergerequests.get(mr_iid)
+            
+            # Try to get approvals if available
+            approvals = {}
+            if hasattr(mr, 'approvals'):
+                approval_obj = mr.approvals.get()
+                approvals = {
+                    "approvals_required": getattr(approval_obj, "approvals_required", 0),
+                    "approvals_left": getattr(approval_obj, "approvals_left", 0),
+                    "approved": getattr(approval_obj, "approved", False),
+                    "approved_by": [
+                        {
+                            "user": {
+                                "id": getattr(user.user, "id", None),
+                                "username": getattr(user.user, "username", None),
+                                "name": getattr(user.user, "name", None),
+                            }
+                        }
+                        for user in getattr(approval_obj, "approved_by", [])
+                    ],
+                    "suggested_approvers": [
+                        {
+                            "id": getattr(user, "id", None),
+                            "username": getattr(user, "username", None),
+                            "name": getattr(user, "name", None),
+                        }
+                        for user in getattr(approval_obj, "suggested_approvers", [])
+                    ],
+                }
+            
+            return {
+                "mr_iid": mr_iid,
+                "title": getattr(mr, "title", None),
+                "approvals": approvals,
+                "state": getattr(mr, "state", None),
+            }
+        except Exception as e:
+            # Return basic info even if approvals not available
+            return {
+                "mr_iid": mr_iid,
+                "approvals": {},
+                "error": f"Approvals may not be available: {str(e)}"
+            }
+    
+    @retry_on_error()
+    def get_merge_request_changes(self, project_id: str, mr_iid: int) -> Dict[str, Any]:
+        """Get the changes/diff for a merge request.
+        
+        Args:
+            project_id: The ID or path of the project
+            mr_iid: The IID of the merge request
+            
+        Returns:
+            Dict containing MR changes
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            mr = project.mergerequests.get(mr_iid)
+            changes = mr.changes()
+            
+            return {
+                "mr_iid": mr_iid,
+                "title": getattr(mr, "title", None),
+                "changes": [
+                    {
+                        "old_path": c.get("old_path"),
+                        "new_path": c.get("new_path"),
+                        "diff": c.get("diff", "")[:1000],  # Truncate large diffs
+                        "new_file": c.get("new_file", False),
+                        "renamed_file": c.get("renamed_file", False),
+                        "deleted_file": c.get("deleted_file", False),
+                    }
+                    for c in changes.get("changes", [])
+                ],
+                "changes_count": len(changes.get("changes", [])),
+            }
+        except gitlab.exceptions.GitlabGetError as e:
+            return {"error": f"Failed to get MR changes: {str(e)}"}
+    
+    @retry_on_error()
+    def get_merge_request_discussions(self, project_id: str, mr_iid: int) -> Dict[str, Any]:
+        """Get all discussions for a merge request.
+        
+        Args:
+            project_id: The ID or path of the project
+            mr_iid: The IID of the merge request
+            
+        Returns:
+            Dict containing discussions
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            mr = project.mergerequests.get(mr_iid)
+            discussions = mr.discussions.list(get_all=True)
+            
+            return {
+                "mr_iid": mr_iid,
+                "title": getattr(mr, "title", None),
+                "discussions": [
+                    {
+                        "id": getattr(d, "id", None),
+                        "individual_note": getattr(d, "individual_note", False),
+                        "notes": [
+                            {
+                                "id": getattr(note, "id", None),
+                                "body": getattr(note, "body", "")[:500],
+                                "author": {
+                                    "username": getattr(note.author, "username", None)
+                                        if hasattr(note, "author") else None
+                                },
+                                "created_at": getattr(note, "created_at", None),
+                                "resolved": getattr(note, "resolved", False),
+                                "resolvable": getattr(note, "resolvable", False),
+                            }
+                            for note in getattr(d, "notes", [])
+                        ],
+                    }
+                    for d in discussions
+                ],
+                "discussions_count": len(discussions),
+            }
+        except gitlab.exceptions.GitlabGetError as e:
+            return {"error": f"Failed to get discussions: {str(e)}"}
+    
     def get_merge_request_notes(
         self,
         project_id: str,
@@ -643,6 +779,82 @@ class GitLabClient:
         ]
 
     @retry_on_error()
+    def get_tags(self, project_id: str) -> List[Dict[str, Any]]:
+        """Get list of repository tags.
+        
+        Args:
+            project_id: The ID or path of the project
+            
+        Returns:
+            List of tags
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            tags = project.tags.list(get_all=False, per_page=50)
+            
+            return [
+                {
+                    "name": getattr(tag, "name", None),
+                    "message": getattr(tag, "message", None),
+                    "target": getattr(tag, "target", None),
+                    "commit": {
+                        "id": getattr(tag.commit, "id", None) if hasattr(tag, "commit") else None,
+                        "short_id": getattr(tag.commit, "short_id", None) if hasattr(tag, "commit") else None,
+                        "title": getattr(tag.commit, "title", None) if hasattr(tag, "commit") else None,
+                        "author_name": getattr(tag.commit, "author_name", None) if hasattr(tag, "commit") else None,
+                        "created_at": getattr(tag.commit, "created_at", None) if hasattr(tag, "commit") else None,
+                    },
+                    "release": {
+                        "tag_name": getattr(tag.release, "tag_name", None) if hasattr(tag, "release") else None,
+                        "description": getattr(tag.release, "description", None) if hasattr(tag, "release") else None,
+                    } if hasattr(tag, "release") else None,
+                    "protected": getattr(tag, "protected", False),
+                }
+                for tag in tags
+            ]
+        except gitlab.exceptions.GitlabGetError as e:
+            return [{"error": f"Failed to get tags: {str(e)}"}]
+    
+    @retry_on_error()
+    def list_releases(self, project_id: str) -> List[Dict[str, Any]]:
+        """Get list of project releases.
+        
+        Args:
+            project_id: The ID or path of the project
+            
+        Returns:
+            List of releases
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            releases = project.releases.list(get_all=False, per_page=20)
+            
+            return [
+                {
+                    "tag_name": getattr(release, "tag_name", None),
+                    "name": getattr(release, "name", None),
+                    "description": getattr(release, "description", None),
+                    "created_at": getattr(release, "created_at", None),
+                    "released_at": getattr(release, "released_at", None),
+                    "author": {
+                        "id": getattr(release.author, "id", None) if hasattr(release, "author") else None,
+                        "username": getattr(release.author, "username", None) if hasattr(release, "author") else None,
+                        "name": getattr(release.author, "name", None) if hasattr(release, "author") else None,
+                    } if hasattr(release, "author") else {},
+                    "commit": {
+                        "id": getattr(release.commit, "id", None) if hasattr(release, "commit") else None,
+                        "short_id": getattr(release.commit, "short_id", None) if hasattr(release, "commit") else None,
+                    } if hasattr(release, "commit") else {},
+                    "assets": {
+                        "sources": getattr(release.assets, "sources", []) if hasattr(release, "assets") else [],
+                        "links": getattr(release.assets, "links", []) if hasattr(release, "assets") else [],
+                    } if hasattr(release, "assets") else {},
+                }
+                for release in releases
+            ]
+        except gitlab.exceptions.GitlabGetError as e:
+            return [{"error": f"Failed to get releases: {str(e)}"}]
+    
     def get_branches(self, project_id: str) -> List[Dict[str, Any]]:
         project = self.gl.projects.get(project_id)
         branches = project.branches.list()
@@ -1713,6 +1925,73 @@ class GitLabClient:
             return {"error": f"Unexpected error previewing commit: {str(e)}"}
 
     @retry_on_error()
+    def summarize_pipeline(self, project_id: str, pipeline_id: int) -> Dict[str, Any]:
+        """Generate an AI-friendly summary of a pipeline.
+        
+        Args:
+            project_id: The ID or path of the project
+            pipeline_id: The ID of the pipeline
+            
+        Returns:
+            Dict containing structured pipeline summary
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            pipeline = project.pipelines.get(pipeline_id)
+            
+            # Get jobs for this pipeline
+            jobs = []
+            try:
+                pipeline_jobs = pipeline.jobs.list(get_all=True)
+                jobs = [
+                    {
+                        "id": getattr(job, "id", None),
+                        "name": getattr(job, "name", None),
+                        "stage": getattr(job, "stage", None),
+                        "status": getattr(job, "status", None),
+                        "started_at": getattr(job, "started_at", None),
+                        "finished_at": getattr(job, "finished_at", None),
+                        "duration": getattr(job, "duration", None),
+                        "web_url": getattr(job, "web_url", None),
+                    }
+                    for job in pipeline_jobs[:20]  # Limit to first 20 jobs
+                ]
+            except Exception:
+                jobs = []
+            
+            # Calculate pipeline stats
+            total_jobs = len(jobs)
+            passed_jobs = len([j for j in jobs if j.get("status") == "success"])
+            failed_jobs = len([j for j in jobs if j.get("status") == "failed"])
+            running_jobs = len([j for j in jobs if j.get("status") in ["running", "pending"]])
+            
+            return {
+                "pipeline_id": pipeline_id,
+                "status": getattr(pipeline, "status", None),
+                "ref": getattr(pipeline, "ref", None),
+                "sha": getattr(pipeline, "sha", None),
+                "created_at": getattr(pipeline, "created_at", None),
+                "updated_at": getattr(pipeline, "updated_at", None),
+                "started_at": getattr(pipeline, "started_at", None),
+                "finished_at": getattr(pipeline, "finished_at", None),
+                "duration": getattr(pipeline, "duration", None),
+                "web_url": getattr(pipeline, "web_url", None),
+                "jobs_summary": {
+                    "total": total_jobs,
+                    "passed": passed_jobs,
+                    "failed": failed_jobs,
+                    "running": running_jobs,
+                },
+                "stages": list(set(j.get("stage") for j in jobs if j.get("stage"))),
+                "jobs": jobs,
+                "user": {
+                    "username": getattr(pipeline.user, "username", None) if hasattr(pipeline, "user") else None,
+                    "name": getattr(pipeline.user, "name", None) if hasattr(pipeline, "user") else None,
+                } if hasattr(pipeline, "user") else {},
+            }
+        except gitlab.exceptions.GitlabGetError as e:
+            return {"error": f"Failed to get pipeline: {str(e)}"}
+    
     def summarize_issue(self, project_id: str, issue_iid: int, max_length: int = 500) -> Dict[str, Any]:
         """Generate an AI-friendly summary of an issue.
         
