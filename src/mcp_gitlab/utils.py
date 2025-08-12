@@ -293,7 +293,7 @@ class GitLabClientManager:
     """
     _instance: Optional['GitLabClientManager'] = None
     _client: Optional[Any] = None
-    _config_hash: Optional[str] = None
+    _config_key: Optional[tuple] = None
     
     def __new__(cls):
         if cls._instance is None:
@@ -308,16 +308,16 @@ class GitLabClientManager:
         # Import here to avoid circular imports
         from .gitlab_client import GitLabClient
         
-        # Generate a hash of the current configuration
-        import hashlib
-        config_str = f"{config.url}:{config.private_token or ''}:{config.oauth_token or ''}"
-        config_hash = hashlib.sha256(config_str.encode()).hexdigest()
+        # Check if configuration has changed
+        # We compare the URL and tokens directly rather than hashing them
+        # to avoid false positives from security scanners about password hashing
+        config_key = (config.url, config.private_token, config.oauth_token)
         
         # Create new client if configuration changed or no client exists
-        if self._client is None or self._config_hash != config_hash:
+        if self._client is None or self._config_key != config_key:
             logger.info("Creating new GitLab client instance")
             self._client = GitLabClient(config)
-            self._config_hash = config_hash
+            self._config_key = config_key
         else:
             logger.debug("Reusing existing GitLab client instance")
         
@@ -326,4 +326,4 @@ class GitLabClientManager:
     def clear_client(self):
         """Clear the cached client instance."""
         self._client = None
-        self._config_hash = None
+        self._config_key = None
