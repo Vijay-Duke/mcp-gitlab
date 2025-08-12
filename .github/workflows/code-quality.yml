@@ -69,7 +69,7 @@ jobs:
           
       - name: Install analysis tools
         run: |
-          uv pip install radon xenon flake8 flake8-cognitive-complexity
+          uv pip install --system radon xenon flake8 flake8-cognitive-complexity
           
       - name: Cyclomatic Complexity
         run: |
