@@ -12,7 +12,6 @@ from typing import Optional
 SECURITY_HEADERS = {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
-    'X-XSS-Protection': '1; mode=block',
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     'Content-Security-Policy': "default-src 'none'",
 }
@@ -109,7 +108,7 @@ def is_safe_redirect_url(url: str, allowed_hosts: list) -> bool:
         if parsed.scheme not in ['https', 'http']:
             return False
         
-        if parsed.scheme == 'http' and parsed.hostname not in ['localhost', '127.0.0.1']:
+        if parsed.scheme == 'http' and parsed.hostname not in ['localhost', '127.0.0.1', '::1']:
             return False
         
         # Check if host is allowed

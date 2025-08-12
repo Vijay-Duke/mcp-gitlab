@@ -4,7 +4,7 @@ Provides security-focused validation for user inputs.
 """
 
 import re
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Callable
 from urllib.parse import urlparse
 
 # Maximum lengths to prevent abuse
@@ -141,7 +141,7 @@ def validate_commit_message(message: str) -> str:
         raise ValidationError(f"Commit message too long (max {MAX_COMMIT_MESSAGE_LENGTH} chars)")
     
     # Remove any potential control characters except newlines
-    cleaned = ''.join(char for char in message if char == '\n' or not ord(char) < 32)
+    cleaned = ''.join(char for char in message if char == '\n' or ord(char) >= 32)
     
     return cleaned.strip()
 
@@ -296,7 +296,7 @@ def validate_integer(value: Any, min_val: Optional[int] = None,
 
 
 def validate_list_input(items: Any, max_items: int = 100, 
-                       item_validator: Optional[callable] = None) -> List:
+                       item_validator: Optional[Callable] = None) -> List:
     """
     Validate list input.
     
@@ -322,8 +322,8 @@ def validate_list_input(items: Any, max_items: int = 100,
         for item in items:
             validated_items.append(item_validator(item))
         return validated_items
-    
-    return items
+    else:
+        return items
 
 
 def sanitize_output(text: str, remove_tokens: bool = True) -> str:
@@ -348,7 +348,7 @@ def sanitize_output(text: str, remove_tokens: bool = True) -> str:
             r'glrt-[\w\-]+',   # Runner token
             r'gloa-[\w\-]+',   # OAuth token
             r'glimt-[\w\-]+',  # Impersonation token
-            r'glcbt-[\w\-]+',  # Ci build token
+            r'glcbt-[\w\-]+',  # CI build token
         ]
         
         for pattern in token_patterns:
