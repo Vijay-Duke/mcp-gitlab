@@ -1201,8 +1201,7 @@ class GitLabClient:
             "group_id": group_id,
         }
 
-    @staticmethod
-    def _snippet_to_dict(snippet: Any) -> Dict[str, Any]:
+    def _snippet_to_dict(self, snippet: Any) -> Dict[str, Any]:
         """Convert snippet object to dictionary"""
         return {
             "id": getattr(snippet, "id", None),
@@ -3378,28 +3377,34 @@ class GitLabClient:
         
         for i, operation in enumerate(operations):
             try:
-                op_type = operation.get("type")
-                op_params = operation.get("params", {})
-                
-                # Add project_id to params if not present
-                if "project_id" not in op_params:
-                    op_params["project_id"] = project_id
-                
-                # Execute operation based on type
-                if op_type == "get_issue":
-                    result = self.get_issue(**op_params)
-                elif op_type == "get_merge_request":
-                    result = self.get_merge_request(**op_params)
-                elif op_type == "list_issues":
-                    result = self.list_issues(**op_params)
-                elif op_type == "list_merge_requests":
-                    result = self.list_merge_requests(**op_params)
-                elif op_type == "get_file_content":
-                    result = self.get_file_content(**op_params)
-                elif op_type == "get_commits":
-                    result = self.get_commits(**op_params)
+                # Validate operation structure
+                if not isinstance(operation, dict):
+                    result = {"error": f"Operation at index {i} must be a dictionary, got {type(operation).__name__}"}
+                elif "type" not in operation:
+                    result = {"error": f"Operation at index {i} missing required 'type' field"}
                 else:
-                    result = {"error": f"Unknown operation type: {op_type}"}
+                    op_type = operation.get("type")
+                    op_params = operation.get("params", {})
+                    
+                    # Add project_id to params if not present
+                    if "project_id" not in op_params:
+                        op_params["project_id"] = project_id
+                    
+                    # Execute operation based on type
+                    if op_type == "get_issue":
+                        result = self.get_issue(**op_params)
+                    elif op_type == "get_merge_request":
+                        result = self.get_merge_request(**op_params)
+                    elif op_type == "list_issues":
+                        result = self.list_issues(**op_params)
+                    elif op_type == "list_merge_requests":
+                        result = self.list_merge_requests(**op_params)
+                    elif op_type == "get_file_content":
+                        result = self.get_file_content(**op_params)
+                    elif op_type == "get_commits":
+                        result = self.get_commits(**op_params)
+                    else:
+                        result = {"error": f"Unknown operation type: {op_type}"}
                 
                 results.append({
                     "index": i,
