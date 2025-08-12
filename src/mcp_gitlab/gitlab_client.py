@@ -1047,19 +1047,19 @@ class GitLabClient:
             return {
                 "commits": [
                     {
-                        "id": commit.id,
-                        "short_id": commit.short_id,
-                        "title": commit.title,
-                        "message": commit.message,
-                        "author_name": commit.author_name,
-                        "author_email": commit.author_email,
-                        "authored_date": commit.authored_date,
-                        "committer_name": commit.committer_name,
-                        "committer_email": commit.committer_email,
-                        "committed_date": commit.committed_date,
-                        "created_at": commit.created_at,
-                        "parent_ids": commit.parent_ids,
-                        "web_url": commit.web_url
+                        "id": getattr(commit, "id", None),
+                        "short_id": getattr(commit, "short_id", None),
+                        "title": getattr(commit, "title", None),
+                        "message": getattr(commit, "message", None),
+                        "author_name": getattr(commit, "author_name", None),
+                        "author_email": getattr(commit, "author_email", None),
+                        "authored_date": getattr(commit, "authored_date", None),
+                        "committer_name": getattr(commit, "committer_name", None),
+                        "committer_email": getattr(commit, "committer_email", None),
+                        "committed_date": getattr(commit, "committed_date", None),
+                        "created_at": getattr(commit, "created_at", None),
+                        "parent_ids": getattr(commit, "parent_ids", None),
+                        "web_url": getattr(commit, "web_url", None)
                     }
                     for commit in commits
                 ],
@@ -1085,19 +1085,19 @@ class GitLabClient:
             commit = project.commits.get(commit_sha, stats=include_stats)
 
             result = {
-                "id": commit.id,
-                "short_id": commit.short_id,
-                "title": commit.title,
-                "message": commit.message,
-                "author_name": commit.author_name,
-                "author_email": commit.author_email,
-                "authored_date": commit.authored_date,
-                "committer_name": commit.committer_name,
-                "committer_email": commit.committer_email,
-                "committed_date": commit.committed_date,
-                "created_at": commit.created_at,
-                "parent_ids": commit.parent_ids,
-                "web_url": commit.web_url
+                "id": getattr(commit, "id", None),
+                "short_id": getattr(commit, "short_id", None),
+                "title": getattr(commit, "title", None),
+                "message": getattr(commit, "message", None),
+                "author_name": getattr(commit, "author_name", None),
+                "author_email": getattr(commit, "author_email", None),
+                "authored_date": getattr(commit, "authored_date", None),
+                "committer_name": getattr(commit, "committer_name", None),
+                "committer_email": getattr(commit, "committer_email", None),
+                "committed_date": getattr(commit, "committed_date", None),
+                "created_at": getattr(commit, "created_at", None),
+                "parent_ids": getattr(commit, "parent_ids", None),
+                "web_url": getattr(commit, "web_url", None)
             }
 
             if include_stats and hasattr(commit, 'stats'):
@@ -1173,15 +1173,15 @@ class GitLabClient:
             commit = project.commits.create(commit_data)
 
             return {
-                "id": commit.id,
-                "short_id": commit.short_id,
-                "title": commit.title,
-                "message": commit.message,
-                "author_name": commit.author_name,
-                "author_email": commit.author_email,
-                "created_at": commit.created_at,
-                "parent_ids": commit.parent_ids,
-                "web_url": commit.web_url
+                "id": getattr(commit, "id", None),
+                "short_id": getattr(commit, "short_id", None),
+                "title": getattr(commit, "title", None),
+                "message": getattr(commit, "message", None),
+                "author_name": getattr(commit, "author_name", None),
+                "author_email": getattr(commit, "author_email", None),
+                "created_at": getattr(commit, "created_at", None),
+                "parent_ids": getattr(commit, "parent_ids", None),
+                "web_url": getattr(commit, "web_url", None)
             }
         except gitlab.exceptions.GitlabCreateError as e:
             return {"error": f"Failed to create commit: {str(e)}"}
@@ -2015,24 +2015,24 @@ class GitLabClient:
         merge_commits = []
         for commit in response:
             try:
-                commit_detail = project.commits.get(commit.id)
+                commit_detail = project.commits.get(getattr(commit, "id", None))
                 parent_ids = getattr(commit_detail, 'parent_ids', [])
                 
                 # Only include if it's a merge commit (has multiple parents)
                 if len(parent_ids) > 1:
                     commit_data = {
-                        "id": commit.id,
-                        "short_id": commit.short_id,
-                        "title": commit.title,
-                        "message": commit.message,
-                        "author_name": commit.author_name,
-                        "author_email": commit.author_email,
-                        "authored_date": commit.authored_date,
-                        "committer_name": commit.committer_name,
-                        "committer_email": commit.committer_email,
-                        "committed_date": commit.committed_date,
-                        "created_at": commit.created_at,
-                        "web_url": commit.web_url,
+                        "id": getattr(commit, "id", None),
+                        "short_id": getattr(commit, "short_id", None),
+                        "title": getattr(commit, "title", None),
+                        "message": getattr(commit, "message", None),
+                        "author_name": getattr(commit, "author_name", None),
+                        "author_email": getattr(commit, "author_email", None),
+                        "authored_date": getattr(commit, "authored_date", None),
+                        "committer_name": getattr(commit, "committer_name", None),
+                        "committer_email": getattr(commit, "committer_email", None),
+                        "committed_date": getattr(commit, "committed_date", None),
+                        "created_at": getattr(commit, "created_at", None),
+                        "web_url": getattr(commit, "web_url", None),
                         "parent_ids": parent_ids,
                         "parent_count": len(parent_ids)
                     }
@@ -2085,7 +2085,7 @@ class GitLabClient:
         commits_data = []
         for commit in response:
             try:
-                commit_detail = project.commits.get(commit.id)
+                commit_detail = project.commits.get(getattr(commit, "id", None))
                 stats = getattr(commit_detail, 'stats', {})
                 additions = stats.get('additions', 0)
                 deletions = stats.get('deletions', 0)
@@ -2094,10 +2094,10 @@ class GitLabClient:
                 total_deletions += deletions
                 
                 commits_data.append({
-                    "id": commit.id,
-                    "short_id": commit.short_id,
-                    "title": commit.title,
-                    "authored_date": commit.authored_date,
+                    "id": getattr(commit, "id", None),
+                    "short_id": getattr(commit, "short_id", None),
+                    "title": getattr(commit, "title", None),
+                    "authored_date": getattr(commit, "authored_date", None),
                     "additions": additions,
                     "deletions": deletions,
                     "total_changes": additions + deletions,
