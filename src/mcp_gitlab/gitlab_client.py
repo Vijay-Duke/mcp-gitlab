@@ -145,6 +145,18 @@ class GitLabClient:
             "web_url": getattr(branch, "web_url", None),
         }
 
+    # Helper methods for internal use
+    def _get_user_info(self, username: str) -> Dict[str, Any]:
+        """Get user info by username - internal helper method"""
+        user = self.get_user_by_username(username)
+        if not user:
+            return {"username": username, "error": "User not found"}
+        return user
+    
+    def _get_project(self, project_id: str) -> Any:
+        """Get project object by ID - internal helper method"""
+        return self.gl.projects.get(project_id)
+    
     @staticmethod
     def _event_to_dict(event: Any) -> Dict[str, Any]:
         return {
@@ -2228,30 +2240,31 @@ class GitLabClient:
                             
                             if note_username == username:
                                 # Filter by date if specified
-                                note_date = note.created_at
-                                if since and note_date < since:
+                                note_date = getattr(note, 'created_at', None)
+                                if since and note_date and note_date < since:
                                     continue
-                                if until and note_date > until:
+                                if until and note_date and note_date > until:
                                     continue
                                 
+                                note_body = getattr(note, 'body', '')
                                 comment_data = {
-                                    "id": note.id,
-                                    "body": note.body[:500] + ("..." if len(note.body) > 500 else ""),
-                                    "created_at": note.created_at,
-                                    "updated_at": note.updated_at,
+                                    "id": getattr(note, 'id', None),
+                                    "body": note_body[:500] + ("..." if len(note_body) > 500 else ""),
+                                    "created_at": getattr(note, 'created_at', None),
+                                    "updated_at": getattr(note, 'updated_at', None),
                                     "system": getattr(note, 'system', False),
                                     "noteable_type": "Issue",
-                                    "noteable_id": issue.iid,
+                                    "noteable_id": getattr(issue, 'iid', None),
                                     "issue": {
-                                        "id": issue.id,
-                                        "iid": issue.iid,
-                                        "title": issue.title,
-                                        "web_url": issue.web_url
+                                        "id": getattr(issue, 'id', None),
+                                        "iid": getattr(issue, 'iid', None),
+                                        "title": getattr(issue, 'title', None),
+                                        "web_url": getattr(issue, 'web_url', None)
                                     },
                                     "project": {
-                                        "id": project.id,
-                                        "name": project.name,
-                                        "path_with_namespace": project.path_with_namespace
+                                        "id": getattr(project, 'id', None),
+                                        "name": getattr(project, 'name', None),
+                                        "path_with_namespace": getattr(project, 'path_with_namespace', None)
                                     }
                                 }
                                 all_comments.append(comment_data)
@@ -2312,31 +2325,32 @@ class GitLabClient:
                             
                             if note_username == username:
                                 # Filter by date if specified
-                                note_date = note.created_at
-                                if since and note_date < since:
+                                note_date = getattr(note, 'created_at', None)
+                                if since and note_date and note_date < since:
                                     continue
-                                if until and note_date > until:
+                                if until and note_date and note_date > until:
                                     continue
                                 
+                                note_body = getattr(note, 'body', '')
                                 comment_data = {
-                                    "id": note.id,
-                                    "body": note.body[:500] + ("..." if len(note.body) > 500 else ""),
-                                    "created_at": note.created_at,
-                                    "updated_at": note.updated_at,
+                                    "id": getattr(note, 'id', None),
+                                    "body": note_body[:500] + ("..." if len(note_body) > 500 else ""),
+                                    "created_at": getattr(note, 'created_at', None),
+                                    "updated_at": getattr(note, 'updated_at', None),
                                     "system": getattr(note, 'system', False),
                                     "noteable_type": "MergeRequest",
-                                    "noteable_id": mr.iid,
+                                    "noteable_id": getattr(mr, 'iid', None),
                                     "merge_request": {
-                                        "id": mr.id,
-                                        "iid": mr.iid,
-                                        "title": mr.title,
-                                        "web_url": mr.web_url,
-                                        "state": mr.state
+                                        "id": getattr(mr, 'id', None),
+                                        "iid": getattr(mr, 'iid', None),
+                                        "title": getattr(mr, 'title', None),
+                                        "web_url": getattr(mr, 'web_url', None),
+                                        "state": getattr(mr, 'state', None)
                                     },
                                     "project": {
-                                        "id": project.id,
-                                        "name": project.name,
-                                        "path_with_namespace": project.path_with_namespace
+                                        "id": getattr(project, 'id', None),
+                                        "name": getattr(project, 'name', None),
+                                        "path_with_namespace": getattr(project, 'path_with_namespace', None)
                                     }
                                 }
                                 all_comments.append(comment_data)
@@ -2410,26 +2424,26 @@ class GitLabClient:
                                     continue
                                 
                                 thread_data = {
-                                    "id": discussion.id,
+                                    "id": getattr(discussion, 'id', None),
                                     "resolved": discussion_resolved,
                                     "notes_count": len(notes) if isinstance(notes, list) else 1,
-                                    "created_at": first_note.created_at if hasattr(first_note, 'created_at') else None,
+                                    "created_at": getattr(first_note, 'created_at', None),
                                     "first_note": {
-                                        "body": first_note.body[:300] + ("..." if len(first_note.body) > 300 else "") if hasattr(first_note, 'body') else "",
+                                        "body": getattr(first_note, 'body', '')[:300] + ("..." if len(getattr(first_note, 'body', '')) > 300 else ""),
                                     },
                                     "noteable_type": "MergeRequest",
-                                    "noteable_id": mr.iid,
+                                    "noteable_id": getattr(mr, 'iid', None),
                                     "merge_request": {
-                                        "id": mr.id,
-                                        "iid": mr.iid,
-                                        "title": mr.title,
-                                        "web_url": mr.web_url,
-                                        "state": mr.state
+                                        "id": getattr(mr, 'id', None),
+                                        "iid": getattr(mr, 'iid', None),
+                                        "title": getattr(mr, 'title', None),
+                                        "web_url": getattr(mr, 'web_url', None),
+                                        "state": getattr(mr, 'state', None)
                                     },
                                     "project": {
-                                        "id": project.id,
-                                        "name": project.name,
-                                        "path_with_namespace": project.path_with_namespace
+                                        "id": getattr(project, 'id', None),
+                                        "name": getattr(project, 'name', None),
+                                        "path_with_namespace": getattr(project, 'path_with_namespace', None)
                                     }
                                 }
                                 all_threads.append(thread_data)
@@ -2509,23 +2523,23 @@ class GitLabClient:
                                             continue
                                         
                                         thread_data = {
-                                            "id": discussion.id,
-                                            "resolved_at": note.created_at if hasattr(note, 'created_at') else None,
+                                            "id": getattr(discussion, 'id', None),
+                                            "resolved_at": getattr(note, 'created_at', None),
                                             "resolved_by": note_username,
                                             "notes_count": len(notes) if isinstance(notes, list) else 1,
                                             "noteable_type": "MergeRequest",
-                                            "noteable_id": mr.iid,
+                                            "noteable_id": getattr(mr, 'iid', None),
                                             "merge_request": {
-                                                "id": mr.id,
-                                                "iid": mr.iid,
-                                                "title": mr.title,
-                                                "web_url": mr.web_url,
-                                                "state": mr.state
+                                                "id": getattr(mr, 'id', None),
+                                                "iid": getattr(mr, 'iid', None),
+                                                "title": getattr(mr, 'title', None),
+                                                "web_url": getattr(mr, 'web_url', None),
+                                                "state": getattr(mr, 'state', None)
                                             },
                                             "project": {
-                                                "id": project.id,
-                                                "name": project.name,
-                                                "path_with_namespace": project.path_with_namespace
+                                                "id": getattr(project, 'id', None),
+                                                "name": getattr(project, 'name', None),
+                                                "path_with_namespace": getattr(project, 'path_with_namespace', None)
                                             }
                                         }
                                         all_resolved_threads.append(thread_data)
