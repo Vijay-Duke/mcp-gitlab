@@ -311,7 +311,7 @@ class GitLabClientManager:
         # Generate a hash of the current configuration
         import hashlib
         config_str = f"{config.url}:{config.private_token or ''}:{config.oauth_token or ''}"
-        config_hash = hashlib.md5(config_str.encode()).hexdigest()
+        config_hash = hashlib.sha256(config_str.encode()).hexdigest()
         
         # Create new client if configuration changed or no client exists
         if self._client is None or self._config_hash != config_hash:
