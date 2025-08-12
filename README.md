@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/Vijay-Duke/mcp-gitlab/actions/workflows/ci.yml/badge.svg)](https://github.com/Vijay-Duke/mcp-gitlab/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Vijay-Duke/mcp-gitlab/branch/main/graph/badge.svg)](https://codecov.io/gh/Vijay-Duke/mcp-gitlab)
+[![Documentation Status](https://readthedocs.org/projects/mcp-gitlab/badge/?version=latest)](https://mcp-gitlab.readthedocs.io/en/latest/?badge=latest)
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](https://opensource.org/licenses/Apache-2.0)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-purple)](https://github.com/anthropics/mcp)

@@ -1,0 +1,99 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 0 * * 1'  # Weekly on Monday
+
+jobs:
+  snyk:
+    name: Snyk Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/python@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --file=pyproject.toml
+        continue-on-error: true  # Don't fail the build on vulnerabilities initially
+      
+      - name: Upload Snyk results to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk.sarif
+        continue-on-error: true
+  
+  pip-audit:
+    name: Pip Audit
+    runs-on: ubuntu-latest
+    env:
+      UV_SYSTEM_PYTHON: 1
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          uv pip install -e .
+          uv pip install pip-audit
+      
+      - name: Run pip-audit
+        run: |
+          pip-audit --desc --fix --dry-run
+        continue-on-error: true
+  
+  safety:
+    name: Safety Check
+    runs-on: ubuntu-latest
+    env:
+      UV_SYSTEM_PYTHON: 1
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          uv pip install -e .
+          uv pip install safety
+      
+      - name: Run Safety check
+        run: |
+          safety check --json --output safety-report.json
+        continue-on-error: true
+      
+      - name: Upload Safety report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: safety-report
+          path: safety-report.json
