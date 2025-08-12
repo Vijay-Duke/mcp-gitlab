@@ -2552,6 +2552,273 @@ class GitLabClient:
             }
         }
 
+    @retry_on_error()
+    def get_repository_tree(self, project_id: str, path: str = "", ref: Optional[str] = None, 
+                           recursive: bool = False) -> Dict[str, Any]:
+        """Get repository tree (list of files and directories).
+        
+        Args:
+            project_id: The ID or path of the project
+            path: The path inside repository to list
+            ref: The name of a repository branch or tag
+            recursive: Boolean value to get a recursive tree
+            
+        Returns:
+            Dict containing repository tree items
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            kwargs = {"path": path, "recursive": recursive}
+            if ref:
+                kwargs["ref"] = ref
+            
+            tree = project.repository_tree(**kwargs)
+            
+            return {
+                "tree": [
+                    {
+                        "id": item.get("id"),
+                        "name": item.get("name"),
+                        "type": item.get("type"),  # "tree" for directory, "blob" for file
+                        "path": item.get("path"),
+                        "mode": item.get("mode"),
+                    }
+                    for item in tree
+                ],
+                "project_id": project_id,
+                "path": path,
+                "ref": ref,
+            }
+        except gitlab.exceptions.GitlabGetError as e:
+            return {"error": f"Failed to get repository tree: {str(e)}"}
+
+    @retry_on_error()
+    def search_in_project(self, project_id: str, scope: str, search: str, 
+                         per_page: int = DEFAULT_PAGE_SIZE, page: int = 1) -> Dict[str, Any]:
+        """Search within a project.
+        
+        Args:
+            project_id: The ID or path of the project
+            scope: Scope of search (blobs, issues, merge_requests, milestones, notes, wiki_blobs, commits)
+            search: Search query
+            per_page: Number of items per page
+            page: Page number
+            
+        Returns:
+            Dict containing search results
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            results = project.search(scope, search, get_all=False, per_page=per_page, page=page)
+            
+            # Format results based on scope
+            formatted_results = []
+            for item in results:
+                if scope == "blobs":
+                    formatted_results.append({
+                        "basename": getattr(item, "basename", None),
+                        "data": getattr(item, "data", None),
+                        "path": getattr(item, "path", None),
+                        "filename": getattr(item, "filename", None),
+                        "id": getattr(item, "id", None),
+                        "ref": getattr(item, "ref", None),
+                        "startline": getattr(item, "startline", None),
+                        "project_id": getattr(item, "project_id", None),
+                    })
+                elif scope == "commits":
+                    formatted_results.append({
+                        "id": getattr(item, "id", None),
+                        "short_id": getattr(item, "short_id", None),
+                        "title": getattr(item, "title", None),
+                        "message": getattr(item, "message", None),
+                        "author_name": getattr(item, "author_name", None),
+                        "created_at": getattr(item, "created_at", None),
+                    })
+                elif scope in ["issues", "merge_requests"]:
+                    formatted_results.append({
+                        "id": getattr(item, "id", None),
+                        "iid": getattr(item, "iid", None),
+                        "title": getattr(item, "title", None),
+                        "description": getattr(item, "description", None),
+                        "state": getattr(item, "state", None),
+                        "created_at": getattr(item, "created_at", None),
+                        "updated_at": getattr(item, "updated_at", None),
+                        "web_url": getattr(item, "web_url", None),
+                    })
+                else:
+                    # Generic formatting for other scopes
+                    formatted_results.append({
+                        k: getattr(item, k, None) 
+                        for k in dir(item) 
+                        if not k.startswith('_')
+                    })
+            
+            pagination = {
+                "page": page,
+                "per_page": per_page,
+                "total": getattr(results, "total", None),
+                "total_pages": getattr(results, "total_pages", None),
+                "next_page": getattr(results, "next_page", None),
+                "prev_page": getattr(results, "prev_page", None),
+            }
+            
+            return {
+                "results": formatted_results,
+                "pagination": pagination,
+                "scope": scope,
+                "search": search,
+                "project_id": project_id,
+            }
+        except gitlab.exceptions.GitlabGetError as e:
+            return {"error": f"Search failed: {str(e)}"}
+        except Exception as e:
+            return {"error": f"Failed to search in project: {str(e)}"}
+
+    @retry_on_error()
+    def summarize_merge_request(self, project_id: str, mr_iid: int, max_length: int = 500) -> Dict[str, Any]:
+        """Generate an AI-friendly summary of a merge request.
+        
+        This method retrieves MR details, changes, and discussions, then formats them
+        into a concise summary suitable for LLM context.
+        
+        Args:
+            project_id: The ID or path of the project
+            mr_iid: The IID of the merge request
+            max_length: Maximum length for description/discussion summary
+            
+        Returns:
+            Dict containing structured MR summary with key information
+        """
+        try:
+            project = self.gl.projects.get(project_id)
+            mr = project.mergerequests.get(mr_iid)
+            
+            # Get MR changes
+            changes = mr.changes()
+            
+            # Get discussions
+            discussions = mr.discussions.list(get_all=True)
+            
+            # Summarize files changed
+            files_changed = []
+            for change in changes.get("changes", []):
+                files_changed.append({
+                    "path": change.get("new_path"),
+                    "additions": change.get("diff", "").count("\n+"),
+                    "deletions": change.get("diff", "").count("\n-"),
+                })
+            
+            # Summarize discussions
+            discussion_summary = []
+            for discussion in discussions[:5]:  # Limit to first 5 discussions
+                notes = discussion.attributes.get("notes", [])
+                if notes:
+                    first_note = notes[0]
+                    discussion_summary.append({
+                        "author": first_note.get("author", {}).get("username"),
+                        "created_at": first_note.get("created_at"),
+                        "resolved": discussion.attributes.get("resolved", False),
+                        "note_count": len(notes),
+                    })
+            
+            # Create summary
+            description = mr.description or ""
+            if len(description) > max_length:
+                description = description[:max_length] + "..."
+            
+            return {
+                "mr_iid": mr_iid,
+                "title": mr.title,
+                "state": mr.state,
+                "author": mr.author.get("username"),
+                "created_at": mr.created_at,
+                "updated_at": mr.updated_at,
+                "source_branch": mr.source_branch,
+                "target_branch": mr.target_branch,
+                "description_summary": description,
+                "files_changed_count": len(files_changed),
+                "files_changed_sample": files_changed[:10],  # First 10 files
+                "additions_total": sum(f["additions"] for f in files_changed),
+                "deletions_total": sum(f["deletions"] for f in files_changed),
+                "discussion_count": len(discussions),
+                "discussions_summary": discussion_summary,
+                "merge_status": mr.merge_status,
+                "has_conflicts": mr.has_conflicts,
+                "labels": mr.labels,
+                "web_url": mr.web_url,
+            }
+        except gitlab.exceptions.GitlabGetError as e:
+            return {"error": f"Failed to get merge request: {str(e)}"}
+
+    @retry_on_error()
+    def batch_operations(self, project_id: str, operations: List[Dict[str, Any]], 
+                        stop_on_error: bool = True) -> Dict[str, Any]:
+        """Execute multiple operations in batch.
+        
+        Args:
+            project_id: The ID or path of the project
+            operations: List of operations to execute
+            stop_on_error: Whether to stop on first error
+            
+        Returns:
+            Dict containing results of all operations
+        """
+        results = []
+        
+        for i, operation in enumerate(operations):
+            try:
+                op_type = operation.get("type")
+                op_params = operation.get("params", {})
+                
+                # Add project_id to params if not present
+                if "project_id" not in op_params:
+                    op_params["project_id"] = project_id
+                
+                # Execute operation based on type
+                if op_type == "get_issue":
+                    result = self.get_issue(**op_params)
+                elif op_type == "get_merge_request":
+                    result = self.get_merge_request(**op_params)
+                elif op_type == "list_issues":
+                    result = self.list_issues(**op_params)
+                elif op_type == "list_merge_requests":
+                    result = self.list_merge_requests(**op_params)
+                elif op_type == "get_file_content":
+                    result = self.get_file_content(**op_params)
+                elif op_type == "get_commits":
+                    result = self.get_commits(**op_params)
+                else:
+                    result = {"error": f"Unknown operation type: {op_type}"}
+                
+                results.append({
+                    "index": i,
+                    "operation": op_type,
+                    "success": "error" not in result,
+                    "result": result,
+                })
+                
+                if stop_on_error and "error" in result:
+                    break
+                    
+            except Exception as e:
+                error_result = {
+                    "index": i,
+                    "operation": operation.get("type"),
+                    "success": False,
+                    "result": {"error": str(e)},
+                }
+                results.append(error_result)
+                
+                if stop_on_error:
+                    break
+        
+        return {
+            "operations_count": len(operations),
+            "executed_count": len(results),
+            "success_count": sum(1 for r in results if r["success"]),
+            "results": results,
+        }
+
 
 __all__ = ["GitLabClient", "GitLabConfig"]
 
