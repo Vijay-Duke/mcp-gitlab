@@ -1004,11 +1004,25 @@ class GitLabClient:
     # ------------------------------------------------------------------
     # Commit and Diff Methods
     # ------------------------------------------------------------------
+    @retry_on_error()
     def get_commits(self, project_id: str, ref_name: Optional[str] = None,
                    since: Optional[str] = None, until: Optional[str] = None,
                    path: Optional[str] = None, per_page: int = DEFAULT_PAGE_SIZE,
                    page: int = 1) -> Dict[str, Any]:
-        """Get list of commits for a project"""
+        """Get list of commits for a project.
+        
+        Args:
+            project_id: The ID or path of the project
+            ref_name: The name of a repository branch, tag or revision range
+            since: Only commits after this date (ISO 8601 format)
+            until: Only commits before this date (ISO 8601 format)
+            path: The file path to filter commits by
+            per_page: Number of items per page (max 100)
+            page: Page number for pagination
+            
+        Returns:
+            Dict containing commits list and pagination info
+        """
         try:
             project = self.gl.projects.get(project_id)
             commits = project.commits.list(
@@ -1020,6 +1034,15 @@ class GitLabClient:
                 page=page,
                 get_all=False
             )
+            
+            pagination = {
+                "page": page,
+                "per_page": per_page,
+                "total": getattr(commits, "total", None),
+                "total_pages": getattr(commits, "total_pages", None),
+                "next_page": getattr(commits, "next_page", None),
+                "prev_page": getattr(commits, "prev_page", None),
+            }
 
             return {
                 "commits": [
@@ -1039,13 +1062,24 @@ class GitLabClient:
                         "web_url": commit.web_url
                     }
                     for commit in commits
-                ]
+                ],
+                "pagination": pagination
             }
         except gitlab.exceptions.GitlabGetError as e:
             return {"error": f"Failed to get commits: {str(e)}"}
 
+    @retry_on_error()
     def get_commit(self, project_id: str, commit_sha: str, include_stats: bool = False) -> Dict[str, Any]:
-        """Get details of a specific commit"""
+        """Get details of a specific commit.
+        
+        Args:
+            project_id: The ID or path of the project
+            commit_sha: The commit hash
+            include_stats: Include commit stats in response
+            
+        Returns:
+            Dict containing commit details
+        """
         try:
             project = self.gl.projects.get(project_id)
             commit = project.commits.get(commit_sha, stats=include_stats)
@@ -1073,8 +1107,17 @@ class GitLabClient:
         except gitlab.exceptions.GitlabGetError as e:
             return {"error": f"Failed to get commit: {str(e)}"}
 
+    @retry_on_error()
     def get_commit_diff(self, project_id: str, commit_sha: str) -> Dict[str, Any]:
-        """Get the diff of a specific commit"""
+        """Get the diff of a specific commit.
+        
+        Args:
+            project_id: The ID or path of the project
+            commit_sha: The commit hash
+            
+        Returns:
+            Dict containing commit SHA and diff
+        """
         try:
             project = self.gl.projects.get(project_id)
             commit = project.commits.get(commit_sha)
@@ -1087,11 +1130,33 @@ class GitLabClient:
         except gitlab.exceptions.GitlabGetError as e:
             return {"error": f"Failed to get commit diff: {str(e)}"}
 
+    @retry_on_error()
     def create_commit(self, project_id: str, branch: str, commit_message: str,
                      actions: List[Dict[str, Any]], author_email: Optional[str] = None,
                      author_name: Optional[str] = None) -> Dict[str, Any]:
-        """Create a new commit with file changes"""
+        """Create a new commit with file changes.
+        
+        Args:
+            project_id: The ID or path of the project
+            branch: Name of the branch to commit to
+            commit_message: The commit message
+            actions: List of file actions (create/update/delete/move/chmod)
+            author_email: The commit author's email
+            author_name: The commit author's name
+            
+        Returns:
+            Dict containing created commit details
+        """
         try:
+            # Validate actions
+            VALID_ACTIONS = ["create", "update", "delete", "move", "chmod"]
+            for action in actions:
+                action_type = action.get("action")
+                if action_type not in VALID_ACTIONS:
+                    return {"error": f"Invalid action type: {action_type}. Must be one of {VALID_ACTIONS}"}
+                if not action.get("file_path"):
+                    return {"error": "Each action must have a 'file_path'"}
+            
             project = self.gl.projects.get(project_id)
 
             commit_data = {
@@ -1121,8 +1186,19 @@ class GitLabClient:
         except gitlab.exceptions.GitlabCreateError as e:
             return {"error": f"Failed to create commit: {str(e)}"}
 
+    @retry_on_error()
     def compare_refs(self, project_id: str, from_ref: str, to_ref: str, straight: bool = False) -> Dict[str, Any]:
-        """Compare two refs (branches, tags, or commits)"""
+        """Compare two refs (branches, tags, or commits).
+        
+        Args:
+            project_id: The ID or path of the project
+            from_ref: The source ref
+            to_ref: The target ref
+            straight: Compare refs in a straight line (not merge base)
+            
+        Returns:
+            Dict containing commits and diffs between refs
+        """
         try:
             project = self.gl.projects.get(project_id)
             comparison = project.repository_compare(from_ref, to_ref, straight=straight)
@@ -1143,11 +1219,23 @@ class GitLabClient:
                 "compare_timeout": comparison.get("compare_timeout", False),
                 "compare_same_ref": comparison.get("compare_same_ref", False)
             }
-        except Exception as e:
+        except gitlab.exceptions.GitlabGetError as e:
             return {"error": f"Failed to compare refs: {str(e)}"}
+        except Exception as e:
+            return {"error": f"Unexpected error comparing refs: {str(e)}"}
 
+    @retry_on_error()
     def cherry_pick_commit(self, project_id: str, commit_sha: str, branch: str) -> Dict[str, Any]:
-        """Cherry pick a commit to another branch"""
+        """Cherry pick a commit to another branch.
+        
+        Args:
+            project_id: The ID or path of the project
+            commit_sha: The commit hash to cherry pick
+            branch: The target branch name
+            
+        Returns:
+            Dict containing cherry picked commit details
+        """
         try:
             project = self.gl.projects.get(project_id)
             commit = project.commits.get(commit_sha)
@@ -1163,24 +1251,41 @@ class GitLabClient:
                 "parent_ids": cherry_picked.get("parent_ids"),
                 "web_url": cherry_picked.get("web_url")
             }
-        except Exception as e:
+        except gitlab.exceptions.GitlabError as e:
             return {"error": f"Failed to cherry pick commit: {str(e)}"}
+        except Exception as e:
+            return {"error": f"Unexpected error cherry picking commit: {str(e)}"}
 
+    @retry_on_error()
     def smart_diff(self, project_id: str, from_ref: str, to_ref: str,
-                  context_lines: int = 3, max_file_size: int = 50000) -> Dict[str, Any]:
-        """Get a smart diff between two refs with configurable context"""
+                  context_lines: int = 3, max_file_size: int = 100000) -> Dict[str, Any]:
+        """Get a smart diff between two refs with configurable context.
+        
+        Intelligently handles large files by checking byte size rather than line count.
+        
+        Args:
+            project_id: The ID or path of the project
+            from_ref: The source ref
+            to_ref: The target ref
+            context_lines: Number of context lines in diff
+            max_file_size: Maximum file size in bytes (default 100KB)
+            
+        Returns:
+            Dict containing diffs and commits between refs
+        """
         try:
             project = self.gl.projects.get(project_id)
             comparison = project.repository_compare(from_ref, to_ref)
 
             diffs = []
             for diff in comparison.get("diffs", []):
-                # Skip files that are too large
-                if diff.get("diff", "").count("\n") > max_file_size:
+                diff_content = diff.get("diff", "")
+                # Check byte size instead of line count for more accurate size check
+                if len(diff_content) > max_file_size:
                     diffs.append({
                         "old_path": diff.get("old_path"),
                         "new_path": diff.get("new_path"),
-                        "diff": f"File too large (>{max_file_size} lines)",
+                        "diff": f"File too large (>{max_file_size} bytes)",
                         "new_file": diff.get("new_file", False),
                         "renamed_file": diff.get("renamed_file", False),
                         "deleted_file": diff.get("deleted_file", False)
@@ -1212,13 +1317,43 @@ class GitLabClient:
                     for commit in comparison.get("commits", [])
                 ]
             }
-        except Exception as e:
+        except gitlab.exceptions.GitlabGetError as e:
             return {"error": f"Failed to get smart diff: {str(e)}"}
+        except Exception as e:
+            return {"error": f"Unexpected error getting smart diff: {str(e)}"}
 
+    @retry_on_error()
     def safe_preview_commit(self, project_id: str, branch: str, commit_message: str,
                            actions: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Preview what a commit would do without actually creating it"""
+        """Preview what a commit would do without actually creating it.
+        
+        Validates that all actions are valid before attempting to commit.
+        
+        Args:
+            project_id: The ID or path of the project
+            branch: Name of the branch to preview commit on
+            commit_message: The commit message
+            actions: List of file actions to validate
+            
+        Returns:
+            Dict containing preview results and validation status
+        """
         try:
+            # Validate action types first
+            VALID_ACTIONS = ["create", "update", "delete", "move", "chmod"]
+            for action in actions:
+                action_type = action.get("action")
+                if action_type not in VALID_ACTIONS:
+                    return {
+                        "error": f"Invalid action type: {action_type}. Must be one of {VALID_ACTIONS}",
+                        "valid": False
+                    }
+                if not action.get("file_path"):
+                    return {
+                        "error": "Each action must have a 'file_path'",
+                        "valid": False
+                    }
+            
             project = self.gl.projects.get(project_id)
 
             # Validate branch exists
@@ -1265,8 +1400,10 @@ class GitLabClient:
                 "preview_results": preview_results,
                 "valid": all(r["valid"] for r in preview_results)
             }
-        except Exception as e:
+        except gitlab.exceptions.GitlabGetError as e:
             return {"error": f"Failed to preview commit: {str(e)}"}
+        except Exception as e:
+            return {"error": f"Unexpected error previewing commit: {str(e)}"}
 
     @retry_on_error()
     def summarize_issue(self, project_id: str, issue_iid: int, max_length: int = 500) -> Dict[str, Any]:

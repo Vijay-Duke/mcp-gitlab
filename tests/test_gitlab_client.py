@@ -794,7 +794,7 @@ class TestGitLabClient:
                     "renamed_file": False,
                     "deleted_file": False,
                     "a_mode": "100644",
-                    "b_mode": "100644",
+                    "b_mode": "100644"
                 },
                 {
                     "old_path": "large_file.py",
@@ -818,7 +818,8 @@ class TestGitLabClient:
         mock_project.repository_compare.return_value = mock_comparison
         client.gl.projects.get.return_value = mock_project
 
-        result = client.smart_diff("project-id", "main", "feature", max_file_size=50000)
+        # Call with max_file_size less than the large file's byte size (120000 bytes)
+        result = client.smart_diff("project-id", "main", "feature", max_file_size=100000)
 
         client.gl.projects.get.assert_called_once_with("project-id")
         mock_project.repository_compare.assert_called_once_with("main", "feature")
@@ -830,9 +831,9 @@ class TestGitLabClient:
         assert result["diffs"][0]["new_path"] == "file.py"
         assert "--- a/file.py" in result["diffs"][0]["diff"]
 
-        # Check large file diff
+        # Check large file diff (should be filtered because 120000 bytes > 100000 max)
         assert result["diffs"][1]["new_path"] == "large_file.py"
-        assert "File too large" in result["diffs"][1]["diff"]
+        assert "File too large (>100000 bytes)" in result["diffs"][1]["diff"]
 
         assert "commits" in result
         assert len(result["commits"]) == 1
