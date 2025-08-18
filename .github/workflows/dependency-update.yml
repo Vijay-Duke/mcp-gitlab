@@ -28,14 +28,12 @@ jobs:
           
       - name: Update dependencies
         run: |
-          uv pip install --upgrade pip setuptools wheel
-          uv pip install --upgrade -r <(uv pip freeze | cut -d= -f1)
           uv lock --upgrade
           
       - name: Run tests after update
         run: |
-          uv pip install -e .[test]
-          pytest tests/ -v
+          uv sync --all-extras
+          uv run pytest tests/ -v
         continue-on-error: true
         
       - name: Create Pull Request
