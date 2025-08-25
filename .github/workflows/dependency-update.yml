@@ -8,6 +8,8 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
+  repository-projects: write
 
 jobs:
   update-dependencies:
@@ -62,3 +64,5 @@ jobs:
           labels: |
             dependencies
             automated
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
