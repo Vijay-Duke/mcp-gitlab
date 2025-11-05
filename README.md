@@ -2,6 +2,10 @@
 
 A Model Context Protocol (MCP) server that provides comprehensive GitLab API integration. This server enables LLMs to interact with GitLab repositories, manage merge requests, issues, and perform various Git operations.
 
+<a href="https://glama.ai/mcp/servers/@Vijay-Duke/mcp-gitlab">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Vijay-Duke/mcp-gitlab/badge" alt="GitLab Server MCP server" />
+</a>
+
 ## Features
 
 ### Core Features
