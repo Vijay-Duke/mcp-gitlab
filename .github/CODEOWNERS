@@ -1,0 +1,26 @@
+# Code Owners for MCP GitLab
+# These owners will be the default owners for everything in the repo.
+# They will be requested for review when someone opens a pull request.
+
+# Global owners
+* @Vijay-Duke
+
+# Documentation
+*.md @Vijay-Duke
+/docs/ @Vijay-Duke
+
+# GitHub specific files
+/.github/ @Vijay-Duke
+
+# Core source code
+/src/ @Vijay-Duke
+
+# Tests
+/tests/ @Vijay-Duke
+
+# Configuration files
+*.yml @Vijay-Duke
+*.yaml @Vijay-Duke
+*.toml @Vijay-Duke
+Dockerfile @Vijay-Duke
+Makefile @Vijay-Duke

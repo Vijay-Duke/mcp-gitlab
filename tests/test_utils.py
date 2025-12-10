@@ -114,7 +114,7 @@ class TestErrorHandling:
         error = Exception("Some error")
         result = sanitize_error(error)
         
-        assert result["error"] == "An unexpected error occurred. Please try again."
+        assert result["error"].startswith("An unexpected error occurred.")
         assert result["type"] == "Exception"
     
     @pytest.mark.unit

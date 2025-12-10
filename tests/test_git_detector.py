@@ -231,10 +231,28 @@ class TestGitDetector:
         # Valid GitLab URLs
         assert GitDetector.is_gitlab_url("https://gitlab.com/group/project.git") is True
         assert GitDetector.is_gitlab_url("git@gitlab.com:group/project.git") is True
-        
+        # Subdomains containing a "gitlab" component are also valid
+        assert (
+            GitDetector.is_gitlab_url("https://example.gitlab.com/group/project.git")
+            is True
+        )
+
         # Invalid URLs
         assert GitDetector.is_gitlab_url("not-a-url") is False
         assert GitDetector.is_gitlab_url("https://gitlab.com/project") is False
+        # Non-GitLab hosts should also return False
+        assert GitDetector.is_gitlab_url("https://github.com/user/repo.git") is False
+        assert (
+            GitDetector.is_gitlab_url("https://notgitlab.com/user/repo.git") is False
+        )
+        assert (
+            GitDetector.is_gitlab_url("https://mygitlabclone.com/user/repo.git")
+            is False
+        )
+        assert (
+            GitDetector.is_gitlab_url("https://notgitlab.example.com/user/repo.git")
+            is False
+        )
     
     @pytest.mark.unit
     def test_is_gitlab_url_with_host_check(self):

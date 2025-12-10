@@ -54,4 +54,38 @@ dmypy.json
 
 # Logs
 *.log
-/README.md
+
+# Coverage reports
+coverage.xml
+*.cover
+.hypothesis/
+.coverage.*
+
+# Type checking
+.pytype/
+.pyre/
+.ruff_cache/
+
+# Package managers
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Environments
+.env.*
+!.env.example
+
+# Local development
+*.local
+.history/
+
+# Development tools and metadata
+.agent-os/
+.claude-flow/
+.swarm/
+.claude/

@@ -8,12 +8,39 @@ from typing import Any, Dict, Optional, List
 from mcp_gitlab.gitlab_client import GitLabClient
 from mcp_gitlab.constants import (
     DEFAULT_PAGE_SIZE, SMALL_PAGE_SIZE, DEFAULT_MAX_BODY_LENGTH,
-    ERROR_NO_PROJECT, TOOL_LIST_PROJECTS, TOOL_GET_PROJECT,
-    TOOL_DETECT_PROJECT, TOOL_GET_CURRENT_PROJECT, TOOL_LIST_ISSUES, TOOL_LIST_MRS,
-    TOOL_GET_MR_NOTES, TOOL_LIST_BRANCHES, TOOL_LIST_PIPELINES,
-    TOOL_GET_USER_EVENTS, TOOL_LIST_USER_EVENTS, TOOL_LIST_COMMITS,
-    TOOL_LIST_REPOSITORY_TREE, TOOL_LIST_TAGS, TOOL_LIST_RELEASES,
-    TOOL_LIST_PROJECT_MEMBERS, TOOL_LIST_PROJECT_HOOKS
+    ERROR_NO_PROJECT,
+    # List tools
+    TOOL_LIST_PROJECTS, TOOL_LIST_ISSUES, TOOL_LIST_MRS,
+    TOOL_LIST_BRANCHES, TOOL_LIST_PIPELINES, TOOL_LIST_USER_EVENTS,
+    TOOL_LIST_COMMITS, TOOL_LIST_REPOSITORY_TREE, TOOL_LIST_TAGS,
+    TOOL_LIST_RELEASES, TOOL_LIST_PROJECT_MEMBERS, TOOL_LIST_PROJECT_HOOKS,
+    TOOL_LIST_GROUPS, TOOL_GET_GROUP, TOOL_LIST_GROUP_PROJECTS,
+    TOOL_LIST_SNIPPETS, TOOL_GET_SNIPPET, TOOL_CREATE_SNIPPET, TOOL_UPDATE_SNIPPET,
+    TOOL_LIST_PIPELINE_JOBS, TOOL_DOWNLOAD_JOB_ARTIFACT, TOOL_LIST_PROJECT_JOBS,
+    # Get tools
+    TOOL_GET_PROJECT, TOOL_GET_CURRENT_PROJECT, TOOL_GET_MR_NOTES,
+    TOOL_GET_CURRENT_USER, TOOL_GET_USER,
+    TOOL_GET_ISSUE, TOOL_GET_MERGE_REQUEST,
+    TOOL_GET_FILE_CONTENT, TOOL_GET_COMMIT, TOOL_GET_COMMIT_DIFF,
+    TOOL_GET_MR_APPROVALS, TOOL_GET_MR_DISCUSSIONS, TOOL_GET_MR_CHANGES,
+    # Action tools
+    TOOL_UPDATE_MR, TOOL_CLOSE_MR,
+    TOOL_MERGE_MR, TOOL_REBASE_MR, TOOL_APPROVE_MR, TOOL_ADD_ISSUE_COMMENT,
+    TOOL_ADD_MR_COMMENT, TOOL_RESOLVE_DISCUSSION, TOOL_CREATE_COMMIT,
+    TOOL_CHERRY_PICK_COMMIT, TOOL_COMPARE_REFS,
+    # Search tools
+    TOOL_SEARCH_PROJECTS, TOOL_SEARCH_IN_PROJECT,
+    # AI and Advanced Tools
+    TOOL_SUMMARIZE_MR, TOOL_SUMMARIZE_ISSUE, TOOL_SUMMARIZE_PIPELINE,
+    TOOL_SMART_DIFF, TOOL_SAFE_PREVIEW_COMMIT, TOOL_BATCH_OPERATIONS,
+    TOOL_SEARCH_USER, TOOL_GET_USER_DETAILS, TOOL_GET_MY_PROFILE,
+    TOOL_GET_USER_CONTRIBUTIONS_SUMMARY, TOOL_GET_USER_ACTIVITY_FEED,
+    TOOL_GET_USER_OPEN_MRS, TOOL_GET_USER_REVIEW_REQUESTS, TOOL_GET_USER_OPEN_ISSUES,
+    TOOL_GET_USER_REPORTED_ISSUES, TOOL_GET_USER_RESOLVED_ISSUES,
+    TOOL_GET_USER_COMMITS, TOOL_GET_USER_MERGE_COMMITS,
+    TOOL_GET_USER_CODE_CHANGES_SUMMARY, TOOL_GET_USER_SNIPPETS,
+    TOOL_GET_USER_ISSUE_COMMENTS, TOOL_GET_USER_MR_COMMENTS,
+    TOOL_GET_USER_DISCUSSION_THREADS, TOOL_GET_USER_RESOLVED_THREADS
 )
 
 logger = logging.getLogger(__name__)
@@ -70,14 +97,16 @@ def handle_get_project(client: GitLabClient, arguments: Optional[Dict[str, Any]]
     return client.get_project(project_id)
 
 
-def handle_detect_project(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """Handle detecting project from git"""
+def handle_get_current_project(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting current project using git detection"""
     path = get_argument(arguments, "path", ".")
-    result = client.get_project_from_git(path)
-    
+    result = client.get_current_project(path)
+
     if not result:
         return {"error": ERROR_NO_PROJECT}
     return result
+
+
 
 
 # Issue Handlers
@@ -218,6 +247,27 @@ def handle_list_pipelines(client: GitLabClient, arguments: Optional[Dict[str, An
     ref = get_argument(arguments, "ref")
     
     return client.get_pipelines(project_id, ref)
+
+
+# Authentication & User Handlers
+def handle_get_current_user(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting the current authenticated user"""
+    return client.get_current_user()
+
+
+def handle_get_user(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user details by ID or username"""
+    user_id = get_argument(arguments, "user_id")
+    username = get_argument(arguments, "username")
+    
+    if not user_id and not username:
+        raise ValueError("Either user_id or username must be provided")
+    
+    result = client.get_user(user_id=user_id, username=username)
+    if result is None:
+        raise ValueError(f"User not found: {user_id or username}")
+    
+    return result
 
 
 # User Event Handlers
@@ -479,76 +529,569 @@ def handle_batch_operations(client: GitLabClient, arguments: Optional[Dict[str, 
     return client.batch_operations(project_id, operations, stop_on_error)
 
 
+# Snippets handlers
+def handle_list_snippets(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle listing project snippets"""
+    project_id = require_project_id(client, arguments)
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.list_snippets(project_id, per_page=per_page, page=page)
+
+
+def handle_get_snippet(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting single snippet"""
+    project_id = require_project_id(client, arguments)
+    snippet_id = require_argument(arguments, "snippet_id")
+    
+    return client.get_snippet(project_id, snippet_id)
+
+
+def handle_create_snippet(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle creating a snippet"""
+    project_id = require_project_id(client, arguments)
+    title = require_argument(arguments, "title")
+    file_name = require_argument(arguments, "file_name")
+    content = require_argument(arguments, "content")
+    description = get_argument(arguments, "description")
+    visibility = get_argument(arguments, "visibility", "private")
+    
+    return client.create_snippet(
+        project_id=project_id,
+        title=title,
+        file_name=file_name,
+        content=content,
+        description=description,
+        visibility=visibility
+    )
+
+
+def handle_update_snippet(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle updating a snippet"""
+    project_id = require_project_id(client, arguments)
+    snippet_id = require_argument(arguments, "snippet_id")
+    title = get_argument(arguments, "title")
+    file_name = get_argument(arguments, "file_name")
+    content = get_argument(arguments, "content")
+    description = get_argument(arguments, "description")
+    visibility = get_argument(arguments, "visibility")
+    
+    return client.update_snippet(
+        project_id=project_id,
+        snippet_id=snippet_id,
+        title=title,
+        file_name=file_name,
+        content=content,
+        description=description,
+        visibility=visibility
+    )
+
+
+# Group handlers
+def handle_list_groups(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle listing groups"""
+    search = get_argument(arguments, "search")
+    owned = get_argument(arguments, "owned", False)
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.list_groups(search=search, owned=owned, per_page=per_page, page=page)
+
+
+def handle_get_group(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting single group"""
+    group_id = require_argument(arguments, "group_id")
+    with_projects = get_argument(arguments, "with_projects", False)
+    
+    return client.get_group(group_id, with_projects=with_projects)
+
+
+def handle_list_group_projects(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle listing projects within a group"""
+    group_id = require_argument(arguments, "group_id")
+    search = get_argument(arguments, "search")
+    include_subgroups = get_argument(arguments, "include_subgroups", False)
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.list_group_projects(
+        group_id, 
+        search=search, 
+        include_subgroups=include_subgroups,
+        per_page=per_page, 
+        page=page
+    )
+
+
+# Job and Artifact handlers
+def handle_list_pipeline_jobs(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle listing jobs in a pipeline"""
+    project_id = require_project_id(client, arguments)
+    pipeline_id = require_argument(arguments, "pipeline_id")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.list_pipeline_jobs(project_id, pipeline_id, per_page=per_page, page=page)
+
+
+def handle_download_job_artifact(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle downloading job artifacts"""
+    project_id = require_project_id(client, arguments)
+    job_id = require_argument(arguments, "job_id")
+    artifact_path = get_argument(arguments, "artifact_path")
+    
+    return client.download_job_artifact(project_id, job_id, artifact_path)
+
+
+def handle_list_project_jobs(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle listing jobs for a project"""
+    project_id = require_project_id(client, arguments)
+    scope = get_argument(arguments, "scope")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.list_project_jobs(project_id, scope=scope, per_page=per_page, page=page)
+
+
+# ============================================================================
+# USER & PROFILE HANDLERS
+# ============================================================================
+
+def handle_search_user(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle searching for users"""
+    search = require_argument(arguments, "search")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.search_user(search=search, per_page=per_page, page=page)
+
+
+def handle_get_user_details(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting comprehensive user profile"""
+    user_id = get_argument(arguments, "user_id")
+    username = get_argument(arguments, "username")
+    
+    return client.get_user_details(user_id=user_id, username=username)
+
+
+def handle_get_my_profile(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting current user's complete profile"""
+    return client.get_my_profile()
+
+
+def handle_get_user_contributions_summary(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user contributions summary"""
+    user_id = get_argument(arguments, "user_id")
+    username = get_argument(arguments, "username")
+    since = get_argument(arguments, "since")
+    until = get_argument(arguments, "until")
+    project_id = get_argument(arguments, "project_id")
+    
+    return client.get_user_contributions_summary(
+        user_id=user_id,
+        username=username, 
+        since=since,
+        until=until,
+        project_id=project_id
+    )
+
+
+def handle_get_user_activity_feed(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user activity feed"""
+    user_id = get_argument(arguments, "user_id")
+    username = get_argument(arguments, "username")
+    action = get_argument(arguments, "action")
+    target_type = get_argument(arguments, "target_type")
+    after = get_argument(arguments, "after")
+    before = get_argument(arguments, "before")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.get_user_activity_feed(
+        user_id=user_id,
+        username=username,
+        action=action,
+        target_type=target_type,
+        after=after,
+        before=before,
+        per_page=per_page,
+        page=page
+    )
+
+
+# ============================================================================
+# USER'S ISSUES & MRS HANDLERS
+# ============================================================================
+
+def handle_get_user_open_mrs(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user's open merge requests"""
+    user_id = get_argument(arguments, "user_id")
+    username = get_argument(arguments, "username")
+    sort = get_argument(arguments, "sort", "updated")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.get_user_open_mrs(
+        user_id=user_id,
+        username=username,
+        sort=sort,
+        per_page=per_page,
+        page=page
+    )
+
+
+def handle_get_user_review_requests(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user's pending review requests"""
+    user_id = get_argument(arguments, "user_id")
+    username = get_argument(arguments, "username")
+    priority = get_argument(arguments, "priority")
+    sort = get_argument(arguments, "sort", "urgency")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.get_user_review_requests(
+        user_id=user_id,
+        username=username,
+        priority=priority,
+        sort=sort,
+        per_page=per_page,
+        page=page
+    )
+
+
+def handle_get_user_open_issues(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user's open issues"""
+    user_id = get_argument(arguments, "user_id")
+    username = get_argument(arguments, "username")
+    severity = get_argument(arguments, "severity")
+    sla_status = get_argument(arguments, "sla_status")
+    sort = get_argument(arguments, "sort", "priority")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.get_user_open_issues(
+        user_id=user_id,
+        username=username,
+        severity=severity,
+        sla_status=sla_status,
+        sort=sort,
+        per_page=per_page,
+        page=page
+    )
+
+
+def handle_get_user_reported_issues(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user's reported issues"""
+    user_id = get_argument(arguments, "user_id")
+    username = get_argument(arguments, "username")
+    state = get_argument(arguments, "state", "opened")
+    since = get_argument(arguments, "since")
+    until = get_argument(arguments, "until")
+    sort = get_argument(arguments, "sort", "created")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.get_user_reported_issues(
+        user_id=user_id,
+        username=username,
+        state=state,
+        since=since,
+        until=until,
+        sort=sort,
+        per_page=per_page,
+        page=page
+    )
+
+
+def handle_get_user_resolved_issues(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user's resolved issues"""
+    user_id = get_argument(arguments, "user_id")
+    username = get_argument(arguments, "username")
+    since = get_argument(arguments, "since")
+    until = get_argument(arguments, "until")
+    complexity = get_argument(arguments, "complexity")
+    sort = get_argument(arguments, "sort", "closed")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.get_user_resolved_issues(
+        user_id=user_id,
+        username=username,
+        since=since,
+        until=until,
+        complexity=complexity,
+        sort=sort,
+        per_page=per_page,
+        page=page
+    )
+
+
+# ============================================================================
+# USER'S CODE & COMMITS HANDLERS
+# ============================================================================
+
+def handle_get_user_commits(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user's commits"""
+    user_id = get_argument(arguments, "user_id")
+    username = get_argument(arguments, "username")
+    project_id = get_argument(arguments, "project_id")
+    branch = get_argument(arguments, "branch")
+    since = get_argument(arguments, "since")
+    until = get_argument(arguments, "until")
+    include_stats = get_argument(arguments, "include_stats", False)
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.get_user_commits(
+        user_id=user_id,
+        username=username,
+        project_id=project_id,
+        branch=branch,
+        since=since,
+        until=until,
+        include_stats=include_stats,
+        per_page=per_page,
+        page=page
+    )
+
+
+def handle_get_user_merge_commits(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user's merge commits"""
+    username = get_argument(arguments, "username")
+    if not username:
+        raise ValueError("username is required")
+    
+    project_id = get_argument(arguments, "project_id")
+    since = get_argument(arguments, "since")
+    until = get_argument(arguments, "until")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.get_user_merge_commits(
+        username=username,
+        project_id=project_id,
+        since=since,
+        until=until,
+        per_page=per_page,
+        page=page
+    )
+
+
+def handle_get_user_code_changes_summary(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user's code changes summary"""
+    username = get_argument(arguments, "username")
+    if not username:
+        raise ValueError("username is required")
+    
+    project_id = get_argument(arguments, "project_id")
+    since = get_argument(arguments, "since")
+    until = get_argument(arguments, "until")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    
+    return client.get_user_code_changes_summary(
+        username=username,
+        project_id=project_id,
+        since=since,
+        until=until,
+        per_page=per_page
+    )
+
+
+def handle_get_user_snippets(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user's snippets"""
+    username = get_argument(arguments, "username")
+    if not username:
+        raise ValueError("username is required")
+    
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.get_user_snippets(
+        username=username,
+        per_page=per_page,
+        page=page
+    )
+
+
+def handle_get_user_issue_comments(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user's issue comments"""
+    username = get_argument(arguments, "username")
+    if not username:
+        raise ValueError("username is required")
+    
+    project_id = get_argument(arguments, "project_id")
+    since = get_argument(arguments, "since")
+    until = get_argument(arguments, "until")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.get_user_issue_comments(
+        username=username,
+        project_id=project_id,
+        since=since,
+        until=until,
+        per_page=per_page,
+        page=page
+    )
+
+
+def handle_get_user_mr_comments(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user's MR comments"""
+    username = get_argument(arguments, "username")
+    if not username:
+        raise ValueError("username is required")
+    
+    project_id = get_argument(arguments, "project_id")
+    since = get_argument(arguments, "since")
+    until = get_argument(arguments, "until")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.get_user_mr_comments(
+        username=username,
+        project_id=project_id,
+        since=since,
+        until=until,
+        per_page=per_page,
+        page=page
+    )
+
+
+def handle_get_user_discussion_threads(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user's discussion threads"""
+    username = get_argument(arguments, "username")
+    if not username:
+        raise ValueError("username is required")
+    
+    project_id = get_argument(arguments, "project_id")
+    thread_status = get_argument(arguments, "thread_status")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.get_user_discussion_threads(
+        username=username,
+        project_id=project_id,
+        thread_status=thread_status,
+        per_page=per_page,
+        page=page
+    )
+
+
+def handle_get_user_resolved_threads(client: GitLabClient, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Handle getting user's resolved threads"""
+    username = get_argument(arguments, "username")
+    if not username:
+        raise ValueError("username is required")
+    
+    project_id = get_argument(arguments, "project_id")
+    since = get_argument(arguments, "since")
+    until = get_argument(arguments, "until")
+    per_page = get_argument(arguments, "per_page", DEFAULT_PAGE_SIZE)
+    page = get_argument(arguments, "page", 1)
+    
+    return client.get_user_resolved_threads(
+        username=username,
+        project_id=project_id,
+        since=since,
+        until=until,
+        per_page=per_page,
+        page=page
+    )
+
 # Tool handler mapping
 TOOL_HANDLERS = {
+    # List tools
     TOOL_LIST_PROJECTS: handle_list_projects,
-    TOOL_GET_PROJECT: handle_get_project,
-    TOOL_DETECT_PROJECT: handle_detect_project,
-    TOOL_GET_CURRENT_PROJECT: handle_detect_project,  # Same handler, new name
     TOOL_LIST_ISSUES: handle_list_issues,
-    "gitlab_get_issue": handle_get_issue,
     TOOL_LIST_MRS: handle_list_merge_requests,
-    "gitlab_get_merge_request": handle_get_merge_request,
-    TOOL_GET_MR_NOTES: handle_get_merge_request_notes,
-    "gitlab_get_file_content": handle_get_file_content,
-    "gitlab_get_repository_tree": handle_get_repository_tree,
-    TOOL_LIST_REPOSITORY_TREE: handle_get_repository_tree,  # Same handler, new name
-    "gitlab_get_commits": handle_get_commits,
-    TOOL_LIST_COMMITS: handle_get_commits,  # Same handler, new name
-    "gitlab_get_commit": handle_get_commit,
-    "gitlab_get_commit_diff": handle_get_commit_diff,
-    "gitlab_search_projects": handle_search_projects,
-    "gitlab_search_in_project": handle_search_in_project,
     TOOL_LIST_BRANCHES: handle_list_branches,
     TOOL_LIST_PIPELINES: handle_list_pipelines,
-    TOOL_GET_USER_EVENTS: handle_get_user_events,
-    TOOL_LIST_USER_EVENTS: handle_get_user_events,  # Same handler, new name
+    TOOL_LIST_USER_EVENTS: handle_get_user_events,
+    TOOL_LIST_COMMITS: handle_get_commits,
+    TOOL_LIST_REPOSITORY_TREE: handle_get_repository_tree,
+    TOOL_LIST_TAGS: handle_get_tags,
+    TOOL_LIST_RELEASES: handle_list_releases,
+    TOOL_LIST_PROJECT_MEMBERS: handle_get_project_members,
+    TOOL_LIST_PROJECT_HOOKS: handle_get_project_hooks,
+    TOOL_LIST_GROUPS: handle_list_groups,
+    TOOL_LIST_GROUP_PROJECTS: handle_list_group_projects,
+    TOOL_LIST_SNIPPETS: handle_list_snippets,
+    TOOL_LIST_PIPELINE_JOBS: handle_list_pipeline_jobs,
+    TOOL_LIST_PROJECT_JOBS: handle_list_project_jobs,
+
+    # Get tools
+    TOOL_GET_PROJECT: handle_get_project,
+    TOOL_GET_CURRENT_PROJECT: handle_get_current_project,
+    TOOL_GET_MR_NOTES: handle_get_merge_request_notes,
+    TOOL_GET_CURRENT_USER: handle_get_current_user,
+    TOOL_GET_USER: handle_get_user,
+    TOOL_GET_GROUP: handle_get_group,
+    TOOL_GET_SNIPPET: handle_get_snippet,
+    TOOL_DOWNLOAD_JOB_ARTIFACT: handle_download_job_artifact,
+    TOOL_GET_ISSUE: handle_get_issue,
+    TOOL_GET_MERGE_REQUEST: handle_get_merge_request,
+    TOOL_GET_FILE_CONTENT: handle_get_file_content,
+    TOOL_GET_COMMIT: handle_get_commit,
+    TOOL_GET_COMMIT_DIFF: handle_get_commit_diff,
+    TOOL_GET_MR_APPROVALS: handle_get_merge_request_approvals,
+    TOOL_GET_MR_DISCUSSIONS: handle_get_merge_request_discussions,
+    TOOL_GET_MR_CHANGES: handle_get_merge_request_changes,
+
+    # Action tools
+    TOOL_CREATE_SNIPPET: handle_create_snippet,
+    TOOL_UPDATE_SNIPPET: handle_update_snippet,
+    TOOL_UPDATE_MR: handle_update_merge_request,
+    TOOL_CLOSE_MR: handle_close_merge_request,
+    TOOL_MERGE_MR: handle_merge_merge_request,
+    TOOL_REBASE_MR: handle_rebase_merge_request,
+    TOOL_APPROVE_MR: handle_approve_merge_request,
+    TOOL_ADD_ISSUE_COMMENT: handle_add_issue_comment,
+    TOOL_ADD_MR_COMMENT: handle_add_merge_request_comment,
+    TOOL_RESOLVE_DISCUSSION: handle_resolve_discussion,
+    TOOL_CREATE_COMMIT: handle_create_commit,
+    TOOL_CHERRY_PICK_COMMIT: handle_cherry_pick_commit,
+    TOOL_COMPARE_REFS: handle_compare_refs,
+
+    # Search tools
+    TOOL_SEARCH_PROJECTS: handle_search_projects,
+    TOOL_SEARCH_IN_PROJECT: handle_search_in_project,
+
+    # AI and Advanced Tools
+    TOOL_SUMMARIZE_MR: handle_summarize_merge_request,
+    TOOL_SUMMARIZE_ISSUE: handle_summarize_issue,
+    TOOL_SUMMARIZE_PIPELINE: handle_summarize_pipeline,
+    TOOL_SMART_DIFF: handle_smart_diff,
+    TOOL_SAFE_PREVIEW_COMMIT: handle_safe_preview_commit,
+    TOOL_BATCH_OPERATIONS: handle_batch_operations,
     
-    # MR lifecycle handlers
-    "gitlab_update_merge_request": handle_update_merge_request,
-    "gitlab_close_merge_request": handle_close_merge_request,
-    "gitlab_merge_merge_request": handle_merge_merge_request,
+    # Job and Artifact handlers
+    TOOL_LIST_PIPELINE_JOBS: handle_list_pipeline_jobs,
+    TOOL_DOWNLOAD_JOB_ARTIFACT: handle_download_job_artifact,
+    TOOL_LIST_PROJECT_JOBS: handle_list_project_jobs,
     
-    # Comment handlers
-    "gitlab_add_issue_comment": handle_add_issue_comment,
-    "gitlab_add_merge_request_comment": handle_add_merge_request_comment,
+    # User & Profile handlers
+    TOOL_SEARCH_USER: handle_search_user,
+    TOOL_GET_USER_DETAILS: handle_get_user_details,
+    TOOL_GET_MY_PROFILE: handle_get_my_profile,
+    TOOL_GET_USER_CONTRIBUTIONS_SUMMARY: handle_get_user_contributions_summary,
+    TOOL_GET_USER_ACTIVITY_FEED: handle_get_user_activity_feed,
     
-    # Approval handlers
-    "gitlab_approve_merge_request": handle_approve_merge_request,
-    "gitlab_get_merge_request_approvals": handle_get_merge_request_approvals,
+    # User's Issues & MRs handlers
+    TOOL_GET_USER_OPEN_MRS: handle_get_user_open_mrs,
+    TOOL_GET_USER_REVIEW_REQUESTS: handle_get_user_review_requests,
+    TOOL_GET_USER_OPEN_ISSUES: handle_get_user_open_issues,
+    TOOL_GET_USER_REPORTED_ISSUES: handle_get_user_reported_issues,
+    TOOL_GET_USER_RESOLVED_ISSUES: handle_get_user_resolved_issues,
     
-    # Repository handlers
-    "gitlab_get_tags": handle_get_tags,
-    TOOL_LIST_TAGS: handle_get_tags,  # Same handler, new name
-    "gitlab_create_commit": handle_create_commit,
-    "gitlab_compare_refs": handle_compare_refs,
+    # User's Code & Commits handlers  
+    TOOL_GET_USER_COMMITS: handle_get_user_commits,
+    TOOL_GET_USER_MERGE_COMMITS: handle_get_user_merge_commits,
+    TOOL_GET_USER_CODE_CHANGES_SUMMARY: handle_get_user_code_changes_summary,
+    TOOL_GET_USER_SNIPPETS: handle_get_user_snippets,
     
-    # Release and member handlers
-    "gitlab_list_releases": handle_list_releases,
-    TOOL_LIST_RELEASES: handle_list_releases,  # Same handler, new name
-    "gitlab_get_project_members": handle_get_project_members,
-    TOOL_LIST_PROJECT_MEMBERS: handle_get_project_members,  # Same handler, new name
-    "gitlab_get_project_hooks": handle_get_project_hooks,
-    TOOL_LIST_PROJECT_HOOKS: handle_get_project_hooks,  # Same handler, new name
-    
-    # MR advanced handlers
-    "gitlab_get_merge_request_discussions": handle_get_merge_request_discussions,
-    "gitlab_resolve_discussion": handle_resolve_discussion,
-    "gitlab_get_merge_request_changes": handle_get_merge_request_changes,
-    
-    # MR operations handlers
-    "gitlab_rebase_merge_request": handle_rebase_merge_request,
-    "gitlab_cherry_pick_commit": handle_cherry_pick_commit,
-    
-    # AI helper handlers
-    "gitlab_summarize_merge_request": handle_summarize_merge_request,
-    "gitlab_summarize_issue": handle_summarize_issue,
-    "gitlab_summarize_pipeline": handle_summarize_pipeline,
-    
-    # Advanced diff handlers
-    "gitlab_smart_diff": handle_smart_diff,
-    "gitlab_safe_preview_commit": handle_safe_preview_commit,
-    
-    # Batch operations handler
-    "gitlab_batch_operations": handle_batch_operations,
+    # User's Comments & Discussions handlers
+    TOOL_GET_USER_ISSUE_COMMENTS: handle_get_user_issue_comments,
+    TOOL_GET_USER_MR_COMMENTS: handle_get_user_mr_comments,
+    TOOL_GET_USER_DISCUSSION_THREADS: handle_get_user_discussion_threads,
+    TOOL_GET_USER_RESOLVED_THREADS: handle_get_user_resolved_threads,
 }

@@ -228,6 +228,100 @@ class TestGitLabClient:
         assert result["state"] == "opened"
     
     @pytest.mark.unit
+    def test_summarize_issue(self, client):
+        """Test summarizing an issue"""
+        # Mock issue
+        mock_issue = Mock()
+        mock_issue.id = 101
+        mock_issue.iid = 1
+        mock_issue.title = "Test Issue"
+        mock_issue.description = "This is a long description " * 50  # Long description
+        mock_issue.state = "opened"
+        mock_issue.created_at = "2024-01-01T00:00:00Z"
+        mock_issue.updated_at = "2024-01-01T00:00:00Z"
+        mock_issue.labels = ["bug", "high-priority"]
+        mock_issue.web_url = "https://gitlab.com/group/project/issues/1"
+        mock_issue.author = {"username": "user1", "name": "User 1"}
+        
+        # Mock notes
+        mock_note1 = Mock()
+        mock_note1.id = 201
+        mock_note1.body = "This is the first comment"
+        mock_note1.created_at = "2024-01-02T00:00:00Z"
+        mock_note1.updated_at = "2024-01-02T00:00:00Z"
+        mock_note1.author = {"username": "user2", "name": "User 2"}
+        mock_note1.system = False
+        mock_note1.noteable_type = "Issue"
+        mock_note1.noteable_iid = 1
+        mock_note1.resolvable = False
+        mock_note1.resolved = False
+        
+        mock_note2 = Mock()
+        mock_note2.id = 202
+        mock_note2.body = "System note"
+        mock_note2.created_at = "2024-01-03T00:00:00Z"
+        mock_note2.updated_at = "2024-01-03T00:00:00Z"
+        mock_note2.author = {"username": "system", "name": "System"}
+        mock_note2.system = True
+        mock_note2.noteable_type = "Issue"
+        mock_note2.noteable_iid = 1
+        mock_note2.resolvable = False
+        mock_note2.resolved = False
+        
+        mock_note3 = Mock()
+        mock_note3.id = 203
+        mock_note3.body = "This is another user comment"
+        mock_note3.created_at = "2024-01-04T00:00:00Z"
+        mock_note3.updated_at = "2024-01-04T00:00:00Z"
+        mock_note3.author = {"username": "user3", "name": "User 3"}
+        mock_note3.system = False
+        mock_note3.noteable_type = "Issue"
+        mock_note3.noteable_iid = 1
+        mock_note3.resolvable = False
+        mock_note3.resolved = False
+        
+        # Mock responses
+        mock_project = Mock()
+        mock_project.issues.get.return_value = mock_issue
+        
+        mock_notes_response = mock_paginated_response(
+            [mock_note1, mock_note2, mock_note3], 
+            total=3, 
+            total_pages=1
+        )
+        mock_issue.notes.list.return_value = mock_notes_response
+        
+        client.gl.projects.get.return_value = mock_project
+        
+        # Call the method
+        result = client.summarize_issue("project-id", 1, max_length=100)
+        
+        # Assertions
+        assert "issue" in result
+        assert result["issue"]["iid"] == 1
+        assert result["issue"]["title"] == "Test Issue"
+        assert result["issue"]["state"] == "opened"
+        assert result["issue"]["labels"] == ["bug", "high-priority"]
+        
+        assert "description" in result
+        assert len(result["description"]) <= 100 + len("... [truncated]")
+        assert result["description"].endswith("... [truncated]")
+        
+        assert "comments_count" in result
+        assert result["comments_count"] == 2  # Only user comments, not system
+        
+        assert "comments" in result
+        assert len(result["comments"]) == 2
+        assert result["comments"][0]["body"] == "This is the first comment"
+        assert result["comments"][1]["body"] == "This is another user comment"
+        
+        assert "summary_info" in result
+        assert result["summary_info"]["total_comments"] == 3
+        assert result["summary_info"]["user_comments"] == 2
+        assert result["summary_info"]["truncated_description"] is True
+        assert result["summary_info"]["truncated_comments"] is False
+    
+    @pytest.mark.unit
     def test_get_merge_requests(self, client):
         """Test getting merge requests list"""
         mock_project = Mock()
@@ -582,3 +676,165 @@ class TestGitLabClient:
         assert len(result["events"]) == 2
         assert result["events"][0]["action_name"] == "pushed"
         assert result["user"]["username"] == "testuser"
+    
+    @pytest.mark.unit
+    def test_get_current_user(self, client):
+        """Test getting current authenticated user"""
+        # Mock user object with attributes
+        mock_user = Mock()
+        mock_user.id = 123
+        mock_user.username = "johndoe"
+        mock_user.name = "John Doe"
+        mock_user.email = "john@example.com"
+        mock_user.state = "active"
+        mock_user.avatar_url = "https://gitlab.com/avatar.jpg"
+        mock_user.web_url = "https://gitlab.com/johndoe"
+        mock_user.created_at = "2020-01-01T00:00:00Z"
+        mock_user.bio = "Software Developer"
+        mock_user.organization = "ACME Corp"
+        mock_user.job_title = "Senior Developer"
+        mock_user.public_email = "john@example.com"
+        mock_user.is_admin = False
+        mock_user.can_create_group = True
+        mock_user.can_create_project = True
+        mock_user.two_factor_enabled = True
+        mock_user.external = False
+        
+        client.gl.user = mock_user
+        
+        result = client.get_current_user()
+        
+        assert result["id"] == 123
+        assert result["username"] == "johndoe"
+        assert result["name"] == "John Doe"
+        assert result["email"] == "john@example.com"
+        assert result["is_admin"] is False
+        assert result["two_factor_enabled"] is True
+    
+    @pytest.mark.unit
+    def test_get_user_by_id(self, client):
+        """Test getting user by ID"""
+        mock_user = Mock()
+        mock_user.id = 456
+        mock_user.username = "janedoe"
+        mock_user.name = "Jane Doe"
+        mock_user.state = "active"
+        mock_user.avatar_url = "https://gitlab.com/avatar2.jpg"
+        mock_user.web_url = "https://gitlab.com/janedoe"
+        mock_user.created_at = "2021-01-01T00:00:00Z"
+        mock_user.bio = "Product Manager"
+        mock_user.organization = "Tech Inc"
+        mock_user.job_title = "PM"
+        mock_user.public_email = "jane@example.com"
+        mock_user.external = False
+        
+        client.gl.users.get.return_value = mock_user
+        
+        result = client.get_user(user_id=456)
+        
+        assert result["id"] == 456
+        assert result["username"] == "janedoe"
+        assert result["name"] == "Jane Doe"
+        client.gl.users.get.assert_called_once_with(456)
+    
+    @pytest.mark.unit
+    def test_get_user_by_username(self, client):
+        """Test getting user by username"""
+        mock_user = Mock()
+        mock_user.id = 789
+        mock_user.username = "testuser"
+        mock_user.name = "Test User"
+        mock_user.state = "active"
+        mock_user.avatar_url = None
+        mock_user.web_url = "https://gitlab.com/testuser"
+        
+        # Mock get_user_by_username
+        client.get_user_by_username = Mock(return_value={
+            "id": 789,
+            "username": "testuser",
+            "name": "Test User",
+            "state": "active",
+            "avatar_url": None,
+            "web_url": "https://gitlab.com/testuser"
+        })
+        
+        result = client.get_user(username="testuser")
+        
+        assert result["id"] == 789
+        assert result["username"] == "testuser"
+        client.get_user_by_username.assert_called_once_with("testuser")
+    
+    @pytest.mark.unit
+    def test_get_user_not_found(self, client):
+        """Test getting user returns None when not found"""
+        client.gl.users.get.side_effect = gitlab.exceptions.GitlabGetError()
+        
+        result = client.get_user(user_id=999)
+        
+        assert result is None
+    
+    @pytest.mark.unit
+    def test_get_user_no_params(self, client):
+        """Test get_user raises error when no params provided"""
+        with pytest.raises(ValueError, match="Either user_id or username must be provided"):
+            client.get_user()
+
+    @pytest.mark.unit
+    def test_smart_diff(self, client):
+        """Test smart diff functionality"""
+        # Mock project and comparison
+        mock_project = Mock()
+        mock_comparison = {
+            "diffs": [
+                {
+                    "old_path": "file.py",
+                    "new_path": "file.py",
+                    "diff": "--- a/file.py\n+++ b/file.py\n@@ -1,1 +1,1 @@\n-old\n+new",
+                    "new_file": False,
+                    "renamed_file": False,
+                    "deleted_file": False,
+                    "a_mode": "100644",
+                    "b_mode": "100644"
+                },
+                {
+                    "old_path": "large_file.py",
+                    "new_path": "large_file.py",
+                    "diff": "a\n" * 60000,
+                    "new_file": False,
+                    "renamed_file": False,
+                    "deleted_file": False,
+                }
+            ],
+            "commits": [
+                {
+                    "id": "commit1",
+                    "short_id": "c1",
+                    "title": "Commit 1",
+                    "author_name": "user1"
+                }
+            ]
+        }
+
+        mock_project.repository_compare.return_value = mock_comparison
+        client.gl.projects.get.return_value = mock_project
+
+        # Call with max_file_size less than the large file's byte size (120000 bytes)
+        result = client.smart_diff("project-id", "main", "feature", max_file_size=100000)
+
+        client.gl.projects.get.assert_called_once_with("project-id")
+        mock_project.repository_compare.assert_called_once_with("main", "feature")
+
+        assert "diffs" in result
+        assert len(result["diffs"]) == 2
+
+        # Check normal diff
+        assert result["diffs"][0]["new_path"] == "file.py"
+        assert "--- a/file.py" in result["diffs"][0]["diff"]
+
+        # Check large file diff (should be filtered because 120000 bytes > 100000 max)
+        assert result["diffs"][1]["new_path"] == "large_file.py"
+        assert "File too large (>100000 bytes)" in result["diffs"][1]["diff"]
+
+        assert "commits" in result
+        assert len(result["commits"]) == 1
+        assert result["commits"][0]["id"] == "commit1"
