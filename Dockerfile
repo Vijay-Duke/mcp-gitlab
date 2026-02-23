@@ -1,5 +1,5 @@
 # Multi-stage build for MCP GitLab Server
-FROM python:3.13-slim as builder
+FROM python:3.14-slim as builder
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -22,7 +22,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv pip install --system --no-cache -e .
 
 # Production stage
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
