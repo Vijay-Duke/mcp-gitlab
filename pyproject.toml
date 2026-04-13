@@ -55,7 +55,7 @@ test = [
     "pytest-mock>=3.10.0",
 ]
 dev = [
-    "ruff>=0.1.0",
+    "ruff>=0.15.10",
     "black>=23.0.0",
     "mypy>=1.0.0",
     "isort>=5.0.0",
