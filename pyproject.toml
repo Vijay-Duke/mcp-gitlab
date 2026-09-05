@@ -33,7 +33,7 @@ classifiers = [
 ]
 dependencies = [
     "mcp>=0.1.0",
-    "python-gitlab>=4.0.0",
+    "python-gitlab>=8.2.0",
     "pydantic>=2.0.0",
     "python-dotenv>=1.0.0",
     "python-json-logger>=2.0.0",
