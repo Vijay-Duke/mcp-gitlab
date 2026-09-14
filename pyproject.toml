@@ -57,7 +57,7 @@ test = [
 dev = [
     "ruff>=0.15.10",
     "black>=23.0.0",
-    "mypy>=1.0.0",
+    "mypy>=2.3.1",
     "isort>=8.0.1",
     "pre-commit>=3.0.0",
 ]
