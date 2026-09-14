@@ -32,7 +32,7 @@ classifiers = [
     "Topic :: System :: Software Distribution",
 ]
 dependencies = [
-    "mcp>=0.1.0",
+    "mcp>=2.2.0",
     "python-gitlab>=8.2.0",
     "pydantic>=2.13.5",
     "python-dotenv>=1.0.0",
